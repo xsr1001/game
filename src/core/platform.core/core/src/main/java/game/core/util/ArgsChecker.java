@@ -5,6 +5,9 @@
 
 package game.core.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Utility class for validating arguments. Various checks are provided that throw {@link IllegalArgumentException} on
  * invalid input.
@@ -12,7 +15,10 @@ package game.core.util;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class ArgsChecker {
+public class ArgsChecker
+{
+    // Logger.
+    private static final Logger LOG = LoggerFactory.getLogger(ArgsChecker.class);
 	
 	//Args, messages and errors.
     private static final String ERROR_CALLING_METHOD = "Cannot obtain method name from JVM.";
@@ -33,10 +39,12 @@ public class ArgsChecker {
      */
 	static void errorOnNull(Object object, String objectDescription) throws IllegalArgumentException {
 		if (objectDescription == null) {
+            LOG.error(ERROR_NO_PARAM_DESCRIPTION);
             throw new IllegalArgumentException(ERROR_NO_PARAM_DESCRIPTION);
 		}
 		
 		if (object == null) {
+            LOG.error(String.format(FORMAT_NULL_PARAM, objectDescription, getCallingMethod()));
             throw new IllegalArgumentException(String.format(FORMAT_NULL_PARAM, objectDescription, getCallingMethod()));
 		}
 	}
