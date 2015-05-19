@@ -37,7 +37,8 @@ public class ArgsChecker
      * @throws IllegalArgumentException
      *             - throw {@link IllegalArgumentException} on null.
      */
-	static void errorOnNull(Object object, String objectDescription) throws IllegalArgumentException {
+    public static void errorOnNull(Object object, String objectDescription) throws IllegalArgumentException
+    {
 		if (objectDescription == null) {
             LOG.error(ERROR_NO_PARAM_DESCRIPTION);
             throw new IllegalArgumentException(ERROR_NO_PARAM_DESCRIPTION);

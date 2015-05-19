@@ -2,10 +2,14 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>game</groupId>
-    <artifactId>service.network.base</artifactId>
+    <artifactId>service.core</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
-  <artifactId>network.bridge.impl</artifactId>
-  <name>game-network-bridge-impl</name>
-  <description>Bridge functionality implementation for game project. </description>
+  <artifactId>service.usn.core</artifactId>
+  <packaging>pom</packaging>
+  <name>game-service-usn-core</name>
+  <description>Core unified service network functionality.</description>
+  <modules>
+  	<module>service.usn.bridge</module>
+  </modules>
 </project>

@@ -1,37 +1,33 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>game</groupId>
-  <artifactId>platform.core</artifactId>
+  <artifactId>service.core</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>game-platform-core</name>
-  <description>Core platform functionality for game modules.</description>
+  <name>game-service-core</name>
+  <description>Core functionality for service entity in game project.</description>
   <modules>
-  	<module>core</module>
-  	<module>network.core</module>
-  	<module>bridge.api</module>
+  	<module>service.usn.core</module>
   </modules>
   <dependencyManagement>
   	<dependencies>
   		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.10</version>
-		</dependency>
-	  	<dependency>
-			<groupId>org.slf4j</groupId>
- 			<artifactId>slf4j-api</artifactId>
- 			<version>1.7.9</version>
- 		</dependency>
+  			<groupId>game</groupId>
+  			<artifactId>core</artifactId>
+  			<version>0.0.1-SNAPSHOT</version>
+  		</dependency>
+  		<dependency>
+  			<groupId>io.netty</groupId>
+  			<artifactId>netty-all</artifactId>
+  			<version>4.0.28.Final</version>
+  		</dependency>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>bridge.api</artifactId>
+  			<version>0.0.1-SNAPSHOT</version>
+  		</dependency>
   	</dependencies>
   </dependencyManagement>
-  <dependencies>
-  	<dependency>
-	  	<groupId>junit</groupId>
- 	  	<artifactId>junit</artifactId>
-  	  	<scope>test</scope>
-  	</dependency>
-  </dependencies>
   <build>
 	  <plugins>
 	  	<plugin>
