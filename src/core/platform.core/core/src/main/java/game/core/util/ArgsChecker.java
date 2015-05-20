@@ -5,8 +5,8 @@
 
 package game.core.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import game.core.log.Logger;
+import game.core.log.LoggerFactory;
 
 /**
  * Utility class for validating arguments. Various checks are provided that throw {@link IllegalArgumentException} on

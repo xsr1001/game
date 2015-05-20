@@ -85,11 +85,11 @@ public final class Logger
                 {
                     throw new IllegalArgumentException(ERROR_DESCRIBE_PARAMETER);
                 }
-                sb.append(String.valueOf(arguments[i])).append(':');
+                sb.append(String.valueOf(arguments[i])).append(System.lineSeparator());
             }
             else
             {
-                sb.append(String.valueOf(arguments[i])).append(System.lineSeparator());
+                sb.append(String.valueOf(arguments[i])).append(':');
             }
         }
         this.log.trace(sb.toString());

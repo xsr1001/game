@@ -193,4 +193,15 @@ public class LoggerTest
             Assert.fail();
         }
     }
+
+    /**
+     * Test trace enabled. This tests if log configuration file is automatically picked up as by default trace is not
+     * enabled.
+     */
+    @Test
+    public void testTraceEnabled()
+    {
+        Assert.assertTrue(LoggerFactory.getLogger(LoggerTest.class).isTraceEnabled());
+    }
+
 }
