@@ -8,7 +8,7 @@ package game.usn.bridge;
 import game.usn.bridge.api.BridgeException;
 import game.usn.bridge.api.IUSNProtocol;
 import game.usn.bridge.api.listener.IConnectionListener;
-import game.usn.bridge.api.listener.IServerListener;
+import game.usn.bridge.api.listener.IChannelListener;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelOption;
@@ -39,14 +39,14 @@ public final class USNBridgeManager extends AbstractBridgeProvider
     }
 
     protected synchronized void registerServiceProxy(IUSNProtocol serviceProtocol,
-        Set<IConnectionListener> externalConnectionListenerSet, Set<IServerListener> serverListenerSet,
+        Set<IConnectionListener> externalConnectionListenerSet, Set<IChannelListener> serverListenerSet,
         AbstractDataProxy serviceProxy) throws BridgeException
     {
         registerServiceProxy(serviceProtocol, externalConnectionListenerSet, serverListenerSet, serviceProxy, 0);
     }
 
     protected synchronized void registerServiceProxy(IUSNProtocol serviceProtocol,
-        Set<IConnectionListener> externalConnectionListenerSet, Set<IServerListener> serverListenerSet,
+        Set<IConnectionListener> externalConnectionListenerSet, Set<IChannelListener> serverListenerSet,
         AbstractDataProxy serviceProxy, short servicePort) throws BridgeException
     {
 

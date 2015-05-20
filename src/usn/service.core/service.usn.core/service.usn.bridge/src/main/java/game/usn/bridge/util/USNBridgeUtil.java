@@ -1,37 +1,29 @@
 /**
  * @file USNBridgeUtil.java
- * @brief <description>
+ * @brief Bridge utility functionality.
  */
 
 package game.usn.bridge.util;
 
-import java.net.ServerSocket;
-
+/**
+ * Bridge utility functionality.
+ * 
+ * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+ *
+ */
 public class USNBridgeUtil
 {
-
+    // Args, msgs, errors.
     private static final String ERROR_NETWORK_PORT = "Invalid network port number: [%d]. Expected a value in [0, 65535].";
-    private int getAvailablePort()
-    {
-        ServerSocket socket = null;
-        try
-        {
-            socket = new ServerSocket(0);
-            return socket.getLocalPort();
-        }
-        catch (Exception e)
-        {
-            return -1;
-        }
-        finally
-        {
-            if (socket != null)
-            {
-                socket.close();
-            }
-        }
-    }
 
+    /**
+     * Validate provided network port number.
+     * 
+     * @param port
+     *            - provided port number.
+     * @throws IllegalArgumentException
+     *             - throw {@link IllegalArgumentException} if port number not valid.
+     */
     public static void validateNetworkPort(short port) throws IllegalArgumentException
     {
         if (port < 0 || port > 65535)

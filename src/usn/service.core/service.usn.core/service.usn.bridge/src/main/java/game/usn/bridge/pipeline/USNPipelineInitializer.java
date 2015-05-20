@@ -8,8 +8,13 @@ package game.usn.bridge.pipeline;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 
-public class USNPipelineInitializer extends ChannelInitializer<Channel>
+public final class USNPipelineInitializer extends ChannelInitializer<Channel>
 {
+
+    public USNPipelineInitializer()
+    {
+
+    }
 
     @Override
     protected void initChannel(Channel ch) throws Exception
