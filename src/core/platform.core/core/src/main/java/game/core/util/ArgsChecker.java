@@ -19,14 +19,13 @@ public class ArgsChecker
 {
     // Logger.
     private static final Logger LOG = LoggerFactory.getLogger(ArgsChecker.class);
-	
-	//Args, messages and errors.
+
+    // Args, messages and errors.
     private static final String ERROR_CALLING_METHOD = "Cannot obtain method name from JVM.";
     private static final String ERROR_NO_PARAM_DESCRIPTION = "Null object description provided!";
     private static final String FORMAT_NULL_PARAM = "Input object: [%s] is null in method: [%s].";
-	private static final String FORMAT_CALLING_METHOD = "%s.%s()";
-	
-	
+    private static final String FORMAT_CALLING_METHOD = "%s.%s()";
+
     /**
      * Validate input to not be null.
      * 
@@ -39,23 +38,26 @@ public class ArgsChecker
      */
     public static void errorOnNull(Object object, String objectDescription) throws IllegalArgumentException
     {
-		if (objectDescription == null) {
+        if (objectDescription == null)
+        {
             LOG.error(ERROR_NO_PARAM_DESCRIPTION);
             throw new IllegalArgumentException(ERROR_NO_PARAM_DESCRIPTION);
-		}
-		
-		if (object == null) {
+        }
+
+        if (object == null)
+        {
             LOG.error(String.format(FORMAT_NULL_PARAM, objectDescription, getCallingMethod()));
             throw new IllegalArgumentException(String.format(FORMAT_NULL_PARAM, objectDescription, getCallingMethod()));
-		}
-	}
-	
+        }
+    }
+
     /**
      * Retrieve calling method and class from the current stack trace associated with this thread if available.
      * 
      * @return - a {@link String} calling class name and method name.
      */
-	private static String getCallingMethod() {
+    private static String getCallingMethod()
+    {
         String callingClass = null;
         String callingMethod = null;
         final StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
@@ -64,8 +66,8 @@ public class ArgsChecker
         // 3rd is target calling method.
         if (stackTrace.length >= 4)
         {
-        	callingClass = stackTrace[3].getClassName();
-        	callingMethod = stackTrace[3].getMethodName();
+            callingClass = stackTrace[3].getClassName();
+            callingMethod = stackTrace[3].getMethodName();
         }
 
         if (callingClass == null || callingMethod == null)
