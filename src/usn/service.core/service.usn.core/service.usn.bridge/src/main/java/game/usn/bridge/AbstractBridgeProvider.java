@@ -57,10 +57,6 @@ public abstract class AbstractBridgeProvider
     private static final String ERROR_NPE = "Null pointer exception thrown.";
     private static final String ERROR_CHANNEL_EXCEPTION = "Channel exception thrown.";
 
-    // Server listeners key that gets attached to the server socket channel.
-    private static final String LISTENERS_KEY = "serverListenerKey";
-    public static final AttributeKey<Set<IChannelListener>> LISTENER_ATR_KEY = AttributeKey.newInstance(LISTENERS_KEY);
-
     // Default socket linger duration in seconds.
     // TODO: configuration
     private static final int DEFAULT_SOCKET_LINGER_SEC = 3;
@@ -121,6 +117,7 @@ public abstract class AbstractBridgeProvider
 
             // Add server listeners.
             serverBootstrap.attr(LISTENER_ATR_KEY, new HashSet<IChannelListener>(listenerSet));
+            serverBootstrap.childAttr(childKey, value)
 
             /**
              * TODO: what do we do here?????
