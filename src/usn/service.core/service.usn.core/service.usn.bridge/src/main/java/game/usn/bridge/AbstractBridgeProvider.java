@@ -10,21 +10,24 @@ import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.BridgeException;
 import game.usn.bridge.api.listener.IChannelListener;
+import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
 import game.usn.bridge.util.USNBridgeUtil;
+import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelException;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.util.AttributeKey;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.internal.PlatformDependent;
 
 import java.net.Inet4Address;
@@ -50,19 +53,17 @@ public abstract class AbstractBridgeProvider
     private static final String ARG_WORKER_GROUP = "workerGroup";
     private static final String ARG_PIPELINE_INITIALIZER = "pipelineInitializer";
     private static final String ARG_SERVICE_PORT = "servicePort";
+    private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
+    private static final String ARG_REMOTE_ADDRESS = "remoteAddress";
     private static final String ERROR_SOCKET_BIND = "Error binding server socket.";
+    private static final String ERROR_CONNECT = "Error connecting with remote host.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_UNKNOWN_HOST = "Cannot retrieve hostname for socket bind.";
     private static final String ERROR_GENERAL_EXCEPTION = "General exception thrown.";
     private static final String ERROR_NPE = "Null pointer exception thrown.";
     private static final String ERROR_CHANNEL_EXCEPTION = "Channel exception thrown.";
 
-    // Default socket linger duration in seconds.
-    // TODO: configuration
-    private static final int DEFAULT_SOCKET_LINGER_SEC = 3;
-
     // Default worker group size.
-    // TODO: configuration
     private static final int DEFAULT_WORKER_GROUPSIZE = Runtime.getRuntime().availableProcessors();
 
     // Set of all channel instances created.
@@ -72,19 +73,24 @@ public abstract class AbstractBridgeProvider
     // low.
     private EventLoopGroup workerGroup;
 
+    /**
+     * Ctor.
+     */
     protected AbstractBridgeProvider()
     {
         this(DEFAULT_WORKER_GROUPSIZE);
     }
 
     /**
-     * Constructor.
+     * Ctor.
+     * 
+     * @param workerGroupSize
+     *            - number of threads in event I/O processing group.
      */
     protected AbstractBridgeProvider(int workerGroupSize)
     {
         this.bridgeChannelSet = new HashSet<Channel>();
-        this.workerGroup = generateEventLoopGroup(DEFAULT_WORKER_GROUPSIZE);
-
+        this.workerGroup = generateEventLoopGroup(workerGroupSize);
     }
 
     /**
@@ -97,18 +103,22 @@ public abstract class AbstractBridgeProvider
      *            - an instance of {@link USNPipelineInitializer} to initialize USN service stack to incoming
      *            connections.
      * @param listenerSet
-     *            - a {@link Set}<{@link IChannelListener}> to notify with service life-cycle results.
+     *            - a {@link Set}<{@link IChannelListener}> to notify with server socket channel life-cycle events.
+     * @param channelOptions
+     *            - a {@link ChannelOptions} options for child channels containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideServiceBridge(short servicePort, final USNPipelineInitializer pipelineInitializer,
-        final Set<IChannelListener> listenerSet) throws BridgeException
+        final Set<IChannelListener> listenerSet, final ChannelOptions channelOptions) throws BridgeException
     {
-        LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer);
+        LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer,
+            ARG_CHANNEL_OPTIONS, channelOptions);
 
         try
         {
             ArgsChecker.errorOnNull(pipelineInitializer, ARG_PIPELINE_INITIALIZER);
+            ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
             ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
             USNBridgeUtil.validateNetworkPort(servicePort);
 
@@ -116,15 +126,18 @@ public abstract class AbstractBridgeProvider
                 new InetSocketAddress(Inet4Address.getLocalHost(), servicePort), this.workerGroup, pipelineInitializer);
 
             // Add server listeners.
-            serverBootstrap.attr(LISTENER_ATR_KEY, new HashSet<IChannelListener>(listenerSet));
-            serverBootstrap.childAttr(childKey, value)
+            serverBootstrap.attr(USNPipelineInitializer.CHANNEL_LISTENER_ATR_KEY, new HashSet<IChannelListener>(
+                listenerSet));
+
+            // Add channel options.
+            serverBootstrap.childAttr(USNPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
 
             /**
-             * TODO: what do we do here?????
+             * TODO: socket and netty options??
              */
-            serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
-            serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
-            serverBootstrap.childOption(ChannelOption.SO_LINGER, DEFAULT_SOCKET_LINGER_SEC);
+            // serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
+            // serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
+            // serverBootstrap.childOption(ChannelOption.SO_LINGER, DEFAULT_SOCKET_LINGER_SEC);
 
             // Bind and add listener.
             serverBootstrap.bind().addListener(new ChannelFutureListener() {
@@ -146,7 +159,7 @@ public abstract class AbstractBridgeProvider
                         {
                             listener.notifyChannelError();
                         }
-                        LOG.error(ERROR_SOCKET_BIND, future.channel().remoteAddress());
+                        LOG.error(ERROR_SOCKET_BIND, future.channel().localAddress());
                         throw new BridgeException(ERROR_SOCKET_BIND);
                     }
                 }
@@ -161,6 +174,93 @@ public abstract class AbstractBridgeProvider
         {
             LOG.error(ERROR_UNKNOWN_HOST, uhe);
             throw new BridgeException(ERROR_UNKNOWN_HOST, uhe);
+        }
+        catch (Exception e)
+        {
+            LOG.error(ERROR_GENERAL_EXCEPTION, e);
+            throw new BridgeException(ERROR_GENERAL_EXCEPTION, e);
+        }
+        finally
+        {
+            LOG.exitMethod();
+        }
+    }
+
+    /**
+     * Creates an outgoing channel and connects with the remote host. This method presumes that client has provided
+     * extended {@link USNPipelineInitializer} with the client specific stack and protocol handlers.
+     * 
+     * @param remoteAddress
+     *            - a valid remote-host {@link SocketAddress}.
+     * @param pipelineInitializer
+     *            - an instance of {@link USNPipelineInitializer} to initialize USN client stack for outgoing
+     *            connection.
+     * @param listenerSet
+     *            - a {@link Set}<{@link IChannelListener}> to notify with client socket channel life-cycle events.
+     * @param channelOptions
+     *            - a {@link ChannelOptions} options for child channels containing consumer specific options.
+     * @throws BridgeException
+     *             - throw {@link BridgeException} on error.
+     */
+    protected void provideClientBridge(final SocketAddress remoteAddress,
+        final USNPipelineInitializer pipelineInitializer, final Set<IChannelListener> listenerSet,
+        final ChannelOptions channelOptions) throws BridgeException
+    {
+        LOG.enterMethod(ARG_PIPELINE_INITIALIZER, pipelineInitializer, ARG_CHANNEL_OPTIONS, channelOptions);
+
+        try
+        {
+            ArgsChecker.errorOnNull(pipelineInitializer, ARG_PIPELINE_INITIALIZER);
+            ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
+            ArgsChecker.errorOnNull(remoteAddress, ARG_REMOTE_ADDRESS);
+            ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
+
+            Bootstrap clientBootstrap = createBaseClientUSNStack(remoteAddress, this.workerGroup, pipelineInitializer);
+
+            // Add client listeners.
+            clientBootstrap.attr(USNPipelineInitializer.CHANNEL_LISTENER_ATR_KEY, new HashSet<IChannelListener>(
+                listenerSet));
+
+            // Add channel options.
+            clientBootstrap.attr(USNPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
+
+            /**
+             * TODO: socket and netty options??
+             */
+            // serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
+            // serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
+            // serverBootstrap.childOption(ChannelOption.SO_LINGER, DEFAULT_SOCKET_LINGER_SEC);
+
+            // Connect and add listener.
+            clientBootstrap.connect().addListener(new ChannelFutureListener() {
+
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception
+                {
+                    if (future.isSuccess())
+                    {
+                        for (IChannelListener listener : listenerSet)
+                        {
+                            listener.notifyChannelUp();
+                        }
+                        bridgeChannelSet.add(future.channel());
+                    }
+                    else
+                    {
+                        for (IChannelListener listener : listenerSet)
+                        {
+                            listener.notifyChannelError();
+                        }
+                        LOG.error(ERROR_CONNECT, future.channel().remoteAddress());
+                        throw new BridgeException(ERROR_CONNECT);
+                    }
+                }
+            });
+        }
+        catch (IllegalArgumentException ie)
+        {
+            LOG.error(ERROR_ILLEGAL_ARGUMENT, ie);
+            throw new BridgeException(ERROR_ILLEGAL_ARGUMENT, ie);
         }
         catch (Exception e)
         {
@@ -198,14 +298,30 @@ public abstract class AbstractBridgeProvider
         return serverBootstrap;
     }
 
-    // private Bootstrap createBaseClientUSNStack(SocketAddress address, EventLoopGroup workerGroup)
-    // {
-    // Bootstrap bootstrap = new Bootstrap();
-    // bootstrap.channel(generateServerChannel());
-    // bootstrap.group(workerGroup);
-    // bootstrap.remoteAddress(address);
-    // return bootstrap;
-    // }
+    /**
+     * Construct a new client bootstrap. Bootstrap pipeline initializer should have been extended with the client
+     * specific pipeline and protocol.
+     * 
+     * @param address
+     *            - a valid remote-host {@link SocketAddress}.
+     * @param workerGroup
+     *            - an initialized {@link EventLoopGroup} for handling I/O events.
+     * @param pipelineInitializer
+     *            - an instance of {@link USNPipelineInitializer} to provide new network stack for remote connections.
+     *            Client should have extended initializer by providing client specific pipeline items and protocol.
+     * 
+     * @return - a ready to connect {@link Bootstrap}.
+     */
+    private Bootstrap createBaseClientUSNStack(SocketAddress address, EventLoopGroup workerGroup,
+        final USNPipelineInitializer pipelineInitializer)
+    {
+        Bootstrap bootstrap = new Bootstrap();
+        bootstrap.channel(generateClientChannel());
+        bootstrap.group(workerGroup);
+        bootstrap.remoteAddress(address);
+        bootstrap.handler(pipelineInitializer);
+        return bootstrap;
+    }
 
     /**
      * Shut down USN bridge layer. Notify channel listeners and close channels.
@@ -220,7 +336,7 @@ public abstract class AbstractBridgeProvider
         {
             try
             {
-                Set<IChannelListener> listenerSet = channel.attr(LISTENER_ATR_KEY).get();
+                Set<IChannelListener> listenerSet = channel.attr(USNPipelineInitializer.CHANNEL_LISTENER_ATR_KEY).get();
                 if (listenerSet != null)
                 {
                     for (IChannelListener listener : listenerSet)
@@ -268,5 +384,16 @@ public abstract class AbstractBridgeProvider
     private Class<? extends ServerChannel> generateServerChannel()
     {
         return PlatformDependent.isWindows() ? NioServerSocketChannel.class : EpollServerSocketChannel.class;
+    }
+
+    /**
+     * Helper method for returning subclass of {@link SocketChannel} class. Attempt to use more efficient epoll on Linux
+     * systems.
+     * 
+     * @return subclass of {@link SocketChannel} . Attempts to use epoll socket channel for higher efficiency.
+     */
+    private Class<? extends SocketChannel> generateClientChannel()
+    {
+        return PlatformDependent.isWindows() ? NioSocketChannel.class : EpollSocketChannel.class;
     }
 }

@@ -1,5 +1,5 @@
 /**
- * @file ConnectionOptions.java
+ * @file ChannelOptions.java
  * @brief <description>
  */
 
@@ -9,7 +9,7 @@ import game.usn.bridge.api.listener.IConnectionListener;
 
 import java.util.Set;
 
-public class ConnectionOptions
+public class ChannelOptions
 {
     private int readTimeOutChannelExpirationSec;
     private boolean SSLEnabled;
@@ -62,4 +62,9 @@ public class ConnectionOptions
         this.connectionListenerSet = connectionListenerSet;
     }
 
+    @Override
+    public String toString()
+    {
+        return "";
+    }
 }

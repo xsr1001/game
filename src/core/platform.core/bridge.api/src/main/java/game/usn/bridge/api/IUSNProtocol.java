@@ -7,5 +7,6 @@ package game.usn.bridge.api;
 
 public interface IUSNProtocol
 {
-
+    @Override
+    String toString();
 }

@@ -9,7 +9,7 @@ public interface IConnectionListener
 {
     public enum EConnectionState
     {
-        STAND_BY, CONNECTED, OFFLINE;
+        TRANSPORT_UP, STAND_BY, CONNECTED, OFFLINE;
     }
 
     void notifyConnectionState(String USNEnpoint, EConnectionState state);
