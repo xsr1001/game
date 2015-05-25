@@ -17,6 +17,15 @@ public class ChannelOptions
 
     Set<IConnectionListener> connectionListenerSet;
 
+    public ChannelOptions(boolean isSSLEnabled, int readTimeoutSeconds, boolean server,
+        Set<IConnectionListener> externalConnectionListenerSet)
+    {
+        this.SSLEnabled = isSSLEnabled;
+        this.server = server;
+        this.connectionListenerSet = externalConnectionListenerSet;
+        this.readTimeOutChannelExpirationSec = readTimeoutSeconds;
+    }
+
     public boolean isSSLEnabled()
     {
         return SSLEnabled;

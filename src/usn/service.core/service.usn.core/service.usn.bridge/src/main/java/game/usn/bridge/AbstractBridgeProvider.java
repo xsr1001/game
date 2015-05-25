@@ -47,7 +47,7 @@ import java.util.Set;
 public abstract class AbstractBridgeProvider
 {
     // Logger.
-    private static final Logger LOG = LoggerFactory.getLogger(AbstractBridgeProvider.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(AbstractBridgeProvider.class);
 
     // Errors, args, messages.
     private static final String ARG_WORKER_GROUP = "workerGroup";

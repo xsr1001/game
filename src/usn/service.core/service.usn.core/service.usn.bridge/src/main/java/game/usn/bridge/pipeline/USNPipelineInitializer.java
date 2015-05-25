@@ -18,13 +18,11 @@ import game.usn.bridge.pipeline.decoder.USNFrameDecoder;
 import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 
 import java.net.InetSocketAddress;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -46,9 +44,6 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String MSG_NEW_CONNECTION1 = "client connection accepted";
     private static final String MSG_NEW_CONNECTION2 = "remote connection established";
     private static final String ARG_CONNECTION_OPTIONS = "connectionOptions";
-    private static final String ARG_PROTOCOL = "consumerInOutProtocol";
-    private static final String ARG_IN_HANDLERS = "inHandlerList";
-    private static final String ARG_OUT_HANDLERS = "outHandlerList";
     private static final String ARG_CONSUMER_PROXY = "consumerProxy";
     private static final String ERROR_NO_CONNECTION_OPTIONS = "Cannot retrieve connection options from channel.";
 
@@ -65,17 +60,8 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
 
-    // Consumer in and out protocol.
-    IUSNProtocol consumerInOutProtocol;
-
-    // Consumer specific packet in handler list.
-    List<ChannelHandler> inHandlerList;
-
-    // Consumer specific packet out handler list.
-    List<ChannelHandler> outHandlerList;
-
     // In packet data end-point.
-    ChannelInboundHandlerAdapter consumerProxy;
+    AbstractDataProxy consumerProxy;
 
     /**
      * Ctor.
@@ -91,18 +77,11 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
      *            - an implementation of {@link AbstractDataProxy} that will define actual consumer end-point. All
      *            incoming packets will be routed to it.
      */
-    public USNPipelineInitializer(IUSNProtocol consumerInOutProtocol, List<ChannelHandler> inHandlerList,
-        List<ChannelHandler> outHandlerList, AbstractDataProxy consumerProxy)
+    public USNPipelineInitializer(AbstractDataProxy consumerProxy)
     {
-        ArgsChecker.errorOnNull(consumerInOutProtocol, ARG_PROTOCOL);
-        ArgsChecker.errorOnNull(inHandlerList, ARG_IN_HANDLERS);
-        ArgsChecker.errorOnNull(outHandlerList, ARG_OUT_HANDLERS);
         ArgsChecker.errorOnNull(consumerProxy, ARG_CONSUMER_PROXY);
 
-        this.inHandlerList = new LinkedList<ChannelHandler>(inHandlerList);
-        this.outHandlerList = new LinkedList<ChannelHandler>(outHandlerList);
         this.consumerProxy = consumerProxy;
-        this.consumerInOutProtocol = consumerInOutProtocol;
     }
 
     /**
@@ -137,9 +116,13 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         initBaseUSNPipeline(ch, options);
 
         // Add additional consumer specific handlers.
-        for (ChannelHandler handler : this.inHandlerList)
+        if (this.consumerProxy.getInHandlerList() != null)
         {
-            ch.pipeline().addLast(String.format(HANDLER_CONSUMER_DECODER, handler.getClass().getSimpleName()), handler);
+            for (ChannelHandler handler : this.consumerProxy.getInHandlerList())
+            {
+                ch.pipeline().addLast(String.format(HANDLER_CONSUMER_DECODER, handler.getClass().getSimpleName()),
+                    handler);
+            }
         }
 
         // Add actual data consumer end-point.
