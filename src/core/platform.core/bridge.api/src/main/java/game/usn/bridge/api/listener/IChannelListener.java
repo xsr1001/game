@@ -7,9 +7,9 @@ package game.usn.bridge.api.listener;
 
 public interface IChannelListener
 {
-    public void notifyChannelUp();
+    public void notifyChannelUp(String proxyName);
 
-    public void notifyChannelDown();
+    public void notifyChannelDown(String proxyName);
 
-    public void notifyChannelError();
+    public void notifyChannelError(String proxyName);
 }

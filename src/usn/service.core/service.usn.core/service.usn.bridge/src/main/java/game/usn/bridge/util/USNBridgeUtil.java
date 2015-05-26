@@ -5,6 +5,8 @@
 
 package game.usn.bridge.util;
 
+import game.usn.bridge.pipeline.ChannelOptions;
+
 /**
  * Bridge utility functionality.
  * 
@@ -30,6 +32,22 @@ public class USNBridgeUtil
         {
             throw new IllegalArgumentException(String.format(ERROR_NETWORK_PORT, port));
         }
+    }
+
+    /**
+     * Channel options validator.
+     * 
+     * @param options
+     *            - source {@link ChannelOptions} to validate.
+     * @param isServerOptions
+     *            - validation may vary between client and server specific options.
+     * @throws IllegalArgumentException
+     *             - throw {@link IllegalArgumentException} if channel options are not valid.
+     */
+    public static void validateChannelOptions(ChannelOptions options, boolean isServerOptions)
+        throws IllegalArgumentException
+    {
+        // TODO: implement logic.
     }
 
 }
