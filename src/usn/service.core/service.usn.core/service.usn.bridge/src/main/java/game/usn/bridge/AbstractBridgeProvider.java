@@ -10,6 +10,7 @@ import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.BridgeException;
 import game.usn.bridge.api.listener.IChannelListener;
+import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
 import game.usn.bridge.util.USNBridgeUtil;
@@ -149,7 +150,7 @@ public abstract class AbstractBridgeProvider
                     {
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelUp();
+                            listener.notifyChannelUp(future.channel().pipeline().get(AbstractDataProxy.class).getName());
                         }
                         bridgeChannelSet.add(future.channel());
                     }
@@ -157,10 +158,10 @@ public abstract class AbstractBridgeProvider
                     {
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelError();
+                            listener.notifyChannelError(future.channel().pipeline().get(AbstractDataProxy.class).getName());
                         }
                         LOG.error(ERROR_SOCKET_BIND, future.channel().localAddress());
-                        throw new BridgeException(ERROR_SOCKET_BIND);
+                        return;
                     }
                 }
             });
@@ -241,7 +242,7 @@ public abstract class AbstractBridgeProvider
                     {
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelUp();
+                            listener.notifyChannelUp(future.channel().pipeline().get(AbstractDataProxy.class).getName());
                         }
                         bridgeChannelSet.add(future.channel());
                     }
@@ -249,10 +250,10 @@ public abstract class AbstractBridgeProvider
                     {
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelError();
+                            listener.notifyChannelError(future.channel().pipeline().get(AbstractDataProxy.class).getName());
                         }
                         LOG.error(ERROR_CONNECT, future.channel().remoteAddress());
-                        throw new BridgeException(ERROR_CONNECT);
+                        return;
                     }
                 }
             });
@@ -341,7 +342,7 @@ public abstract class AbstractBridgeProvider
                 {
                     for (IChannelListener listener : listenerSet)
                     {
-                        listener.notifyChannelDown();
+                        listener.notifyChannelDown(channel.pipeline().get(AbstractDataProxy.class).getName());
                     }
                 }
                 channel.close().syncUninterruptibly();

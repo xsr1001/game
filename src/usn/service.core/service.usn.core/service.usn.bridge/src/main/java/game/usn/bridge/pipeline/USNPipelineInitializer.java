@@ -1,6 +1,6 @@
 /**
- * @file USNPipelineProvider.java
- * @brief USNPipelineProvider provides network stack initialization logic for new connections.
+ * @file USNPipelineInitializer.java
+ * @brief USNPipelineInitializer provides network stack initialization logic for new connections.
  */
 
 package game.usn.bridge.pipeline;
@@ -9,7 +9,6 @@ import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.BridgeException;
-import game.usn.bridge.api.IUSNProtocol;
 import game.usn.bridge.api.listener.IChannelListener;
 import game.usn.bridge.api.listener.IConnectionListener;
 import game.usn.bridge.api.listener.IConnectionListener.EConnectionState;
@@ -23,7 +22,6 @@ import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -43,9 +41,10 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String MSG_NEW_CONNECTION_FORMAT = "New %s with host: [%s].";
     private static final String MSG_NEW_CONNECTION1 = "client connection accepted";
     private static final String MSG_NEW_CONNECTION2 = "remote connection established";
-    private static final String ARG_CONNECTION_OPTIONS = "connectionOptions";
+    private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
     private static final String ARG_CONSUMER_PROXY = "consumerProxy";
-    private static final String ERROR_NO_CONNECTION_OPTIONS = "Cannot retrieve connection options from channel.";
+    private static final String ARG_CONSUMER_PROTOCOL = "consumerProtocol";
+    private static final String ERROR_NO_CHANNEL_OPTIONS = "Cannot retrieve channel options attribute from channel.";
 
     // Channel attribute keys.
     private static final String CHANNEL_LISTENERS_KEY = "channelListenerKey";
@@ -60,26 +59,21 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
 
-    // In packet data end-point.
+    // In/Out packet data end-point.
     AbstractDataProxy consumerProxy;
 
     /**
      * Ctor.
      * 
-     * @param consumerInOutProtocol
-     *            - an implementation of {@link IUSNProtocol} to define consumer in and out protocol packet handling. It
-     *            defines in and out message to packet handling.
-     * @param inHandlerList
-     *            - a {@link List}<{@link ChannelHandler}> of consumer specific in channel handlers.
-     * @param outHandlerList
-     *            - a {@link List}<{@link ChannelHandler}> of consumer specific out channel handlers.
      * @param consumerProxy
      *            - an implementation of {@link AbstractDataProxy} that will define actual consumer end-point. All
-     *            incoming packets will be routed to it.
+     *            incoming packets will be routed to it. Proxy should contain consumer specific protocol object and
+     *            optionally additional pipeline in and out handlers.
      */
     public USNPipelineInitializer(AbstractDataProxy consumerProxy)
     {
         ArgsChecker.errorOnNull(consumerProxy, ARG_CONSUMER_PROXY);
+        ArgsChecker.errorOnNull(consumerProxy.getProtocol(), ARG_CONSUMER_PROTOCOL);
 
         this.consumerProxy = consumerProxy;
     }
@@ -96,26 +90,26 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         ChannelOptions options = ch.attr(CHANNEL_OPTIONS_ATR_KEY).get();
         if (options == null)
         {
-            throw new BridgeException(ERROR_NO_CONNECTION_OPTIONS);
+            throw new BridgeException(ERROR_NO_CHANNEL_OPTIONS);
         }
 
         String hostAddress = ((InetSocketAddress) ch.remoteAddress()).getAddress().toString();
         LOG.info(String.format(MSG_NEW_CONNECTION_FORMAT, options.isServer() ? MSG_NEW_CONNECTION1
             : MSG_NEW_CONNECTION2, hostAddress));
 
-        // Notify connection listeners if any.
-        if (options.getConnectionListenerSet() != null)
+        // Notify server connection listeners if any.
+        if (options.isServer() && options.getConnectionListenerSet() != null)
         {
             for (IConnectionListener listener : options.getConnectionListenerSet())
             {
-                listener.notifyConnectionState(hostAddress, EConnectionState.TRANSPORT_UP);
+                listener.notifyConnectionState(ch.toString(), EConnectionState.TRANSPORT_UP);
             }
         }
 
         // Initialize base USN pipeline with non consumer modifiable handler chain.
         initBaseUSNPipeline(ch, options);
 
-        // Add additional consumer specific handlers.
+        // Add additional consumer specific in handlers.
         if (this.consumerProxy.getInHandlerList() != null)
         {
             for (ChannelHandler handler : this.consumerProxy.getInHandlerList())
@@ -124,6 +118,8 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
                     handler);
             }
         }
+
+        // TODO: add out handlers.
 
         // Add actual data consumer end-point.
         ch.pipeline().addLast(HANDLER_PROXY, this.consumerProxy);
@@ -143,17 +139,19 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
      */
     private void initBaseUSNPipeline(Channel ch, ChannelOptions options)
     {
-        LOG.enterMethod(ARG_CONNECTION_OPTIONS, options);
+        LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
 
         // Enable timeout handler.
-        if (options.isEnableReadTimeoutHandler())
+        if (options.isServer() && options.isEnableReadTimeoutHandler())
         {
             ch.pipeline().addLast(HANDLER_TIMEOUT,
                 new ReadTimeoutHandler(options.getReadTimeOutChannelExpirationSec(), TimeUnit.SECONDS));
         }
 
+        // TODO: add write timeout handler for client connections.
+
         ch.pipeline().addLast(HANDLER_FRAME_DECODER, new USNFrameDecoder());
-        ch.pipeline().addLast(HANDLER_PACKET_DECODER, new USNPacketDecoder(this.consumerInOutProtocol));
+        ch.pipeline().addLast(HANDLER_PACKET_DECODER, new USNPacketDecoder(this.consumerProxy.getProtocol()));
 
         if (options.isSSLEnabled())
         {
@@ -174,7 +172,6 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClass().getName());
         sb.append(" for proxy: [").append(this.consumerProxy).append("] ");
-        sb.append(" working with protocol: [").append(this.consumerInOutProtocol).append(" ].");
         return sb.toString();
     }
 }

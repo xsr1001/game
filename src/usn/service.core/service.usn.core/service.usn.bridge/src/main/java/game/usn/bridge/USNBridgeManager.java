@@ -70,6 +70,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      */
     private USNBridgeManager()
     {
+        super();
         this.proxySet = new HashSet<String>();
         this.rwLock = new ReentrantReadWriteLock();
     }
