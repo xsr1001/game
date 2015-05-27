@@ -5,7 +5,7 @@
 
 package game.usn.bridge.api.proxy;
 
-import game.usn.bridge.api.IUSNProtocol;
+import game.usn.bridge.api.protocol.IUSNProtocol;
 import io.netty.channel.ChannelHandler;
 
 import java.util.List;

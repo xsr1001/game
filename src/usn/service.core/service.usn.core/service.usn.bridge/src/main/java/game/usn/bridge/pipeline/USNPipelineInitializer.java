@@ -13,11 +13,12 @@ import game.usn.bridge.api.listener.IChannelListener;
 import game.usn.bridge.api.listener.IConnectionListener;
 import game.usn.bridge.api.listener.IConnectionListener.EConnectionState;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
-import game.usn.bridge.pipeline.decoder.USNFrameDecoder;
 import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 
@@ -55,6 +56,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     // Handler names.
     private static final String HANDLER_TIMEOUT = "handler_timeout";
     private static final String HANDLER_FRAME_DECODER = "handler_frame_decoder";
+    private static final String HANDLER_FRAME_ENCODER = "handler_frame_encoder";
     private static final String HANDLER_PACKET_DECODER = "handler_packet_decoder";
     private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
@@ -141,7 +143,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     {
         LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
 
-        // Enable timeout handler.
+        // Enable read timeout handler for incoming connections.
         if (options.isServer() && options.isEnableReadTimeoutHandler())
         {
             ch.pipeline().addLast(HANDLER_TIMEOUT,
@@ -150,7 +152,15 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
 
         // TODO: add write timeout handler for client connections.
 
-        ch.pipeline().addLast(HANDLER_FRAME_DECODER, new USNFrameDecoder());
+        // Add frame decoder and encoder.
+        ch.pipeline().addLast(
+            HANDLER_FRAME_DECODER,
+            new LengthFieldBasedFrameDecoder(1024, 0, this.consumerProxy.getProtocol().getFrameSize(), 0,
+                this.consumerProxy.getProtocol().getFrameSize()));
+        ch.pipeline().addLast(HANDLER_FRAME_ENCODER,
+            new LengthFieldPrepender(this.consumerProxy.getProtocol().getFrameSize(), 0));
+
+        // Add packet decoder.
         ch.pipeline().addLast(HANDLER_PACKET_DECODER, new USNPacketDecoder(this.consumerProxy.getProtocol()));
 
         if (options.isSSLEnabled())
