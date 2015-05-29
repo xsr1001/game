@@ -14,6 +14,7 @@ import game.usn.bridge.api.listener.IConnectionListener;
 import game.usn.bridge.api.listener.IConnectionListener.EConnectionState;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
+import game.usn.bridge.pipeline.encoder.USNPacketEncoder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
@@ -58,6 +59,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String HANDLER_FRAME_DECODER = "handler_frame_decoder";
     private static final String HANDLER_FRAME_ENCODER = "handler_frame_encoder";
     private static final String HANDLER_PACKET_DECODER = "handler_packet_decoder";
+    private static final String HANDLER_PACKET_ENCODER = "handler_packet_encoder";
     private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
 
@@ -142,6 +144,10 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private void initBaseUSNPipeline(Channel ch, ChannelOptions options)
     {
         LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
+        if (options.isSSLEnabled())
+        {
+            // TODO: Add SSL decoder. Maybe put this higher in the chain, check Netty supported SSL mechanisms.
+        }
 
         // Enable read timeout handler for incoming connections.
         if (options.isServer() && options.isEnableReadTimeoutHandler())
@@ -155,18 +161,14 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         // Add frame decoder and encoder.
         ch.pipeline().addLast(
             HANDLER_FRAME_DECODER,
-            new LengthFieldBasedFrameDecoder(1024, 0, this.consumerProxy.getProtocol().getFrameSize(), 0,
-                this.consumerProxy.getProtocol().getFrameSize()));
+            new LengthFieldBasedFrameDecoder(1024, 0, this.consumerProxy.getProtocol().getFrameLengthHeaderSize(), 0,
+                this.consumerProxy.getProtocol().getFrameLengthHeaderSize()));
         ch.pipeline().addLast(HANDLER_FRAME_ENCODER,
-            new LengthFieldPrepender(this.consumerProxy.getProtocol().getFrameSize(), 0));
+            new LengthFieldPrepender(this.consumerProxy.getProtocol().getFrameLengthHeaderSize(), 0));
 
-        // Add packet decoder.
+        // Add packet decoder and encoder.
         ch.pipeline().addLast(HANDLER_PACKET_DECODER, new USNPacketDecoder(this.consumerProxy.getProtocol()));
-
-        if (options.isSSLEnabled())
-        {
-            // TODO: Add SSL decoder. Maybe put this higher in the chain, check Netty supported SSL mechanisms.
-        }
+        ch.pipeline().addLast(HANDLER_PACKET_ENCODER, new USNPacketEncoder(this.consumerProxy.getProtocol()));
 
         // TODO: Enable mandatory service info handler???
 
