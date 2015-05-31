@@ -35,7 +35,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
     private static final String PROXY_REGISTER1 = "Service";
     private static final String PROXY_REGISTER2 = "Client";
     private static final String MSG_NEW_PROXY = "Registering new %s proxy: [%s] to host [%s].";
-    private static final String MSG_PROXY_REGISTERED = "Successfully registered new proxy: [%s].";
+    private static final String MSG_PROXY_REGISTERED = "Successfully registered new proxy: [%s] on port: [%d].";
     private static final String MSG_PROXY_UNREGISTERED = "Successfully unregistered new proxy: [%s].";
     private static final String ARG_SERVICE_PROXY = "serviceProxy";
     private static final String ARG_CLIENT_PROXY = "clientProxy";
@@ -93,7 +93,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      *             - throw {@link BridgeException} on error.
      */
     public synchronized void registerServiceProxy(AbstractDataProxy serviceProxy,
-        final Set<IChannelListener> channelListenerSet, short servicePort, ChannelOptions channelOptions)
+        final Set<IChannelListener> channelListenerSet, int servicePort, ChannelOptions channelOptions)
         throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PROXY, serviceProxy, ARG_SERVICE_PORT, servicePort, ARG_CHANNEL_OPTIONS,
@@ -137,7 +137,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         }
 
         LOG.info(MSG_NEW_PROXY, PROXY_REGISTER1, serviceProxy.getName(),
-            ARG_LOCALHOST.concat(Short.toString(servicePort)));
+            ARG_LOCALHOST.concat(Integer.toString(servicePort)));
 
         // Add self to listener set to receive actual service channel life-cycle status.
         channelListenerSet.add(this);
@@ -250,15 +250,15 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
     }
 
     @Override
-    public void notifyChannelUp(String proxyName)
+    public void notifyChannelUp(String proxyName, int port)
     {
-        LOG.info(MSG_PROXY_REGISTERED, proxyName);
+        LOG.info(String.format(MSG_PROXY_REGISTERED, proxyName, port));
     }
 
     @Override
     public void notifyChannelDown(String proxyName)
     {
-        LOG.info(MSG_PROXY_UNREGISTERED, proxyName);
+        LOG.info(String.format(MSG_PROXY_UNREGISTERED, proxyName));
         try
         {
             this.rwLock.writeLock().lock();
@@ -273,7 +273,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
     @Override
     public void notifyChannelError(String proxyName)
     {
-        LOG.info(ERROR_PROXY_REGISTER, proxyName);
+        LOG.error(String.format(ERROR_PROXY_REGISTER, proxyName));
         try
         {
             this.rwLock.writeLock().lock();

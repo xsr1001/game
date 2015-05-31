@@ -13,8 +13,7 @@ import javax.xml.ws.ProtocolException;
 
 /**
  * Abstract USN protocol provides base protocol functionality and mapping for all consumer specific protocols. Concrete
- * protocol implementations should add their own specific packet mapping. Currently protocol supports 256 different
- * packet types per consumer (some of which are base).
+ * protocol implementations should add their own specific packet mapping.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -28,13 +27,13 @@ public abstract class AbstractUSNProtocol
     private static final String ERROR_PACKET_ALREADY_REGISTERED = "Provided concrete packet class: [%s] has already been registered.";
 
     // Default number of bytes allocated for length header of the frame message.
-    private static final int DEFAULT_FRAME_LENGTH_HEADER_SIZE = 2;
+    public static final int DEFAULT_FRAME_LENGTH_HEADER_SIZE = 2;
 
     // Packet to id and id to packet maps.
-    private Map<Byte, Class<? extends AbstractPacket>> idToPacketMap;
-    private Map<Class<? extends AbstractPacket>, Byte> packetToIdMap;
+    private Map<Integer, Class<? extends AbstractPacket>> idToPacketMap;
+    private Map<Class<? extends AbstractPacket>, Integer> packetToIdMap;
 
-    // Number of bytes allocated for length header of the frame message.
+    // Number of ints allocated for length header of the frame message.
     private int frameLengthHeaderSize;
 
     /**
@@ -49,12 +48,12 @@ public abstract class AbstractUSNProtocol
      * Ctor.
      * 
      * @param frameLengthHeaderSize
-     *            - number of bytes allocated for length header of the frame message.
+     *            - number of ints allocated for length header of the frame message.
      */
     protected AbstractUSNProtocol(int frameLengthHeaderSize)
     {
-        this.idToPacketMap = new HashMap<Byte, Class<? extends AbstractPacket>>();
-        this.packetToIdMap = new HashMap<Class<? extends AbstractPacket>, Byte>();
+        this.idToPacketMap = new HashMap<Integer, Class<? extends AbstractPacket>>();
+        this.packetToIdMap = new HashMap<Class<? extends AbstractPacket>, Integer>();
         this.frameLengthHeaderSize = frameLengthHeaderSize;
 
         // Register base USN packets.
@@ -83,13 +82,13 @@ public abstract class AbstractUSNProtocol
      * Register a consumer defined packet.
      * 
      * @param packetId
-     *            - a {@link Byte} unique packet id.
+     *            - a {@link int} unique packet id.
      * @param packetClass
      *            - a {@link Class} concrete type of {@link AbstractPacket} that defines a consumer defined packet.
      * @throws ProtocolException
      *             - throw {@link ProtocolException} if desired packet id already been taken.
      */
-    protected final synchronized void registerPacket(Byte packetId, Class<? extends AbstractPacket> packetClass)
+    protected final synchronized void registerPacket(int packetId, Class<? extends AbstractPacket> packetClass)
         throws ProtocolException
     {
         if (this.idToPacketMap.containsKey(packetId) || this.packetToIdMap.containsKey(packetClass))
@@ -97,6 +96,7 @@ public abstract class AbstractUSNProtocol
             throw new ProtocolException(String.format(ERROR_PACKET_ALREADY_REGISTERED, packetClass.getName()));
         }
         this.idToPacketMap.put(packetId, packetClass);
+        this.packetToIdMap.put(packetClass, packetId);
     }
 
     /**
@@ -118,7 +118,7 @@ public abstract class AbstractUSNProtocol
      * @throws ProtocolException
      *             - throws {@link ProtocolException} on invalid packet id or instantiation exception.
      */
-    public final AbstractPacket constructPacket(byte packetId) throws ProtocolException
+    public final AbstractPacket constructPacket(int packetId) throws ProtocolException
     {
         if (!this.idToPacketMap.containsKey(packetId))
         {
@@ -143,12 +143,24 @@ public abstract class AbstractUSNProtocol
      * Check whether a packet with provided packet id has been registered.
      * 
      * @param packetId
-     *            - 1 byte packet id.
+     *            - 1 int packet id.
      * @return - true if packet has been registered of false otherwise.
      */
-    public final boolean packetRegistered(Byte packetId)
+    public final boolean packetRegistered(int packetId)
     {
         return this.idToPacketMap.containsKey(packetId);
+    }
+
+    /**
+     * Check whether a packet with provided class name has been registered.
+     * 
+     * @param packetClass
+     *            - a {@link Class} concrete type of {@link AbstractPacket} that defines a consumer defined packet.
+     * @return - true if packet has been registered of false otherwise.
+     */
+    public final boolean packetRegistered(Class<? extends AbstractPacket> packetClass)
+    {
+        return this.packetToIdMap.containsKey(packetClass);
     }
 
     /**
@@ -156,11 +168,11 @@ public abstract class AbstractUSNProtocol
      * 
      * @param packetClass
      *            - a {@link Class} concrete type of {@link AbstractPacket} that defines a consumer defined packet.
-     * @return 1 byte id for provided class type.
+     * @return 1 int id for provided class type.
      * @throws ProtocolException
      *             - throws {@link ProtocolException} if packet has not yet been registered.
      */
-    public final byte getPacketId(Class<? extends AbstractPacket> packetClass) throws ProtocolException
+    public final int getPacketId(Class<? extends AbstractPacket> packetClass) throws ProtocolException
     {
         if (!this.packetToIdMap.containsKey(packetClass))
         {
@@ -180,7 +192,7 @@ public abstract class AbstractUSNProtocol
     {
         StringBuilder sb = new StringBuilder();
         sb.append("Protocol mapping: {");
-        for (Entry<Byte, Class<? extends AbstractPacket>> entry : this.idToPacketMap.entrySet())
+        for (Entry<Integer, Class<? extends AbstractPacket>> entry : this.idToPacketMap.entrySet())
         {
             sb.append("[").append(entry.getKey()).append(" --> ").append(entry.getValue().getSimpleName()).append("]").append(
                 System.lineSeparator());

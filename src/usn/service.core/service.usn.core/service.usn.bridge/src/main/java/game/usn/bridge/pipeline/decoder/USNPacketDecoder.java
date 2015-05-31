@@ -7,6 +7,7 @@ package game.usn.bridge.pipeline.decoder;
 
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
+import game.core.util.ArgsChecker;
 import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.api.protocol.AbstractUSNProtocol;
 import io.netty.buffer.ByteBuf;
@@ -32,6 +33,7 @@ public final class USNPacketDecoder extends MessageToMessageDecoder<ByteBuf>
     // Args, errors, messages.
     private static final String WARN_UNKNOWN_MESSAGE = "Unknown message received with id: [%d] for protocol: [%s].";
     private static final String ERROR_PACKET_READ = "Failed to read all bytes for packet: [%s] from message with id: [%d] for protocol: [%s].";
+    private static final String ARG_CONSUMER_PROTOCOL = "consumerProtocol";
 
     // Consumer specific protocol instance. It defines in and out supported message types.
     private AbstractUSNProtocol consumerProtocol;
@@ -44,14 +46,15 @@ public final class USNPacketDecoder extends MessageToMessageDecoder<ByteBuf>
      */
     public USNPacketDecoder(AbstractUSNProtocol consumerProtocol)
     {
+        ArgsChecker.errorOnNull(consumerProtocol, ARG_CONSUMER_PROTOCOL);
         this.consumerProtocol = consumerProtocol;
     }
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception
+    public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception
     {
-        // Get 1 byte message id.
-        byte messageId = in.readByte();
+        // Get message id.
+        int messageId = AbstractPacket.readInt(in);
 
         // Create and populate concrete packet if available.
         AbstractPacket packet = null;

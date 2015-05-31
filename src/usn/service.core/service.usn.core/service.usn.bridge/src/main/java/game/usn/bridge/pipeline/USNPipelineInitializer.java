@@ -170,8 +170,6 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         ch.pipeline().addLast(HANDLER_PACKET_DECODER, new USNPacketDecoder(this.consumerProxy.getProtocol()));
         ch.pipeline().addLast(HANDLER_PACKET_ENCODER, new USNPacketEncoder(this.consumerProxy.getProtocol()));
 
-        // TODO: Enable mandatory service info handler???
-
         LOG.exitMethod();
     }
 

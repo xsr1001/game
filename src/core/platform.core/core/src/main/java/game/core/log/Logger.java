@@ -79,7 +79,7 @@ public final class Logger
         sb.append(MSG_ENTER_METHOD).append(" ").append(MSG_ENTER_PARAMS).append(System.lineSeparator());
         for (int i = 0; i < arguments.length; ++i)
         {
-            if (i % 2 != 0)
+            if (i % 2 == 0)
             {
                 if (!(arguments[i] instanceof String))
                 {

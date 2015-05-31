@@ -20,8 +20,10 @@ public interface IChannelListener
      * 
      * @param proxyName
      *            - a {@link String} proxy name that registered itself to this channel
+     * @param port
+     *            = network port of the channel it has been registered on..
      */
-    public void notifyChannelUp(String proxyName);
+    void notifyChannelUp(String proxyName, int port);
 
     /**
      * Notify channel down. This represents successful unbind for service channel and successful disconnect with remote
@@ -30,7 +32,7 @@ public interface IChannelListener
      * @param proxyName
      *            - a {@link String} proxy name that unregistered itself to this channel
      */
-    public void notifyChannelDown(String proxyName);
+    void notifyChannelDown(String proxyName);
 
     /**
      * Notify channel error. This represents error during proxy registration or connect/bind operation.
@@ -38,5 +40,5 @@ public interface IChannelListener
      * @param proxyName
      *            - a {@link String} proxy name that registered/unregistered itself to this channel
      */
-    public void notifyChannelError(String proxyName);
+    void notifyChannelError(String proxyName);
 }

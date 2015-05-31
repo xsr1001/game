@@ -110,7 +110,7 @@ public abstract class AbstractBridgeProvider
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
-    protected void provideServiceBridge(short servicePort, final USNPipelineInitializer pipelineInitializer,
+    protected void provideServiceBridge(int servicePort, final USNPipelineInitializer pipelineInitializer,
         final Set<IChannelListener> listenerSet, final ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer,
@@ -150,17 +150,19 @@ public abstract class AbstractBridgeProvider
                     {
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelUp(future.channel().pipeline().get(AbstractDataProxy.class).getName());
+                            listener.notifyChannelUp(
+                                future.channel().pipeline().get(AbstractDataProxy.class).getName(),
+                                ((InetSocketAddress) future.channel().localAddress()).getPort());
                         }
                         bridgeChannelSet.add(future.channel());
                     }
                     else
                     {
+                        LOG.error(ERROR_SOCKET_BIND);
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelError(future.channel().pipeline().get(AbstractDataProxy.class).getName());
+                            listener.notifyChannelError("");
                         }
-                        LOG.error(ERROR_SOCKET_BIND, future.channel().localAddress());
                         return;
                     }
                 }
@@ -242,7 +244,9 @@ public abstract class AbstractBridgeProvider
                     {
                         for (IChannelListener listener : listenerSet)
                         {
-                            listener.notifyChannelUp(future.channel().pipeline().get(AbstractDataProxy.class).getName());
+                            listener.notifyChannelUp(
+                                future.channel().pipeline().get(AbstractDataProxy.class).getName(),
+                                ((InetSocketAddress) future.channel().remoteAddress()).getPort());
                         }
                         bridgeChannelSet.add(future.channel());
                     }

@@ -26,7 +26,7 @@ public class USNBridgeUtil
      * @throws IllegalArgumentException
      *             - throw {@link IllegalArgumentException} if port number not valid.
      */
-    public static void validateNetworkPort(short port) throws IllegalArgumentException
+    public static void validateNetworkPort(int port) throws IllegalArgumentException
     {
         if (port < 0 || port > 65535)
         {

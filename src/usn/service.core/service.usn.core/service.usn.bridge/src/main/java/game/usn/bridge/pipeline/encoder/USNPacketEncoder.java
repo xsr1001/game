@@ -5,11 +5,14 @@
 
 package game.usn.bridge.pipeline.encoder;
 
+import game.core.util.ArgsChecker;
 import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.api.protocol.AbstractUSNProtocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
+
+import javax.xml.ws.ProtocolException;
 
 /**
  * USN Packet encoder. Pipeline will create a new instance of packet decoder for each connection. This encoder converts
@@ -20,6 +23,9 @@ import io.netty.handler.codec.MessageToByteEncoder;
  */
 public class USNPacketEncoder extends MessageToByteEncoder<AbstractPacket>
 {
+    // Errors, args, messages.
+    private static final String WARN_UNKNOWN_MESSAGE = "Sending unknown message with class: [%s] for protocol: [%s].";
+    private static final String ARG_CONSUMER_PROTOCOL = "consumerProtocol";
 
     // Consumer specific protocol instance. It defines in and out supported message types.
     private AbstractUSNProtocol consumerProtocol;
@@ -32,13 +38,19 @@ public class USNPacketEncoder extends MessageToByteEncoder<AbstractPacket>
      */
     public USNPacketEncoder(AbstractUSNProtocol consumerProtocol)
     {
+        ArgsChecker.errorOnNull(consumerProtocol, ARG_CONSUMER_PROTOCOL);
         this.consumerProtocol = consumerProtocol;
     }
 
     @Override
-    protected void encode(ChannelHandlerContext ctx, AbstractPacket msg, ByteBuf out) throws Exception
+    public void encode(ChannelHandlerContext ctx, AbstractPacket msg, ByteBuf out) throws Exception
     {
-        out.writeByte(this.consumerProtocol.getPacketId(msg.getClass()));
+        if (!this.consumerProtocol.packetRegistered(msg.getClass()))
+        {
+            throw new ProtocolException(String.format(WARN_UNKNOWN_MESSAGE, msg.getClass().getName(),
+                this.consumerProtocol));
+        }
+        AbstractPacket.writeInt(this.consumerProtocol.getPacketId(msg.getClass()), out);
         msg.write(out);
     }
 }
