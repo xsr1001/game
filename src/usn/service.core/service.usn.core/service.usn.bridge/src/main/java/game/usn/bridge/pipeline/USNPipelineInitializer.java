@@ -9,9 +9,9 @@ import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.BridgeException;
-import game.usn.bridge.api.listener.IChannelListener;
-import game.usn.bridge.api.listener.IConnectionListener;
-import game.usn.bridge.api.listener.IConnectionListener.EConnectionState;
+import game.usn.bridge.api.listener.IChannelObserver;
+import game.usn.bridge.api.listener.IConnectionObserver;
+import game.usn.bridge.api.listener.IConnectionObserver.EConnectionState;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
 import game.usn.bridge.pipeline.encoder.USNPacketEncoder;
@@ -49,9 +49,9 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String ERROR_NO_CHANNEL_OPTIONS = "Cannot retrieve channel options attribute from channel.";
 
     // Channel attribute keys.
-    private static final String CHANNEL_LISTENERS_KEY = "channelListenerKey";
+    private static final String CHANNEL_OBSERVER_KEY = "channelObserverKey";
     private static final String CHANNEL_OPTIONS_KEY = "channelOptionsKey";
-    public static final AttributeKey<Set<IChannelListener>> CHANNEL_LISTENER_ATR_KEY = AttributeKey.newInstance(CHANNEL_LISTENERS_KEY);
+    public static final AttributeKey<Set<IChannelObserver>> CHANNEL_OBSERVER_ATR_KEY = AttributeKey.newInstance(CHANNEL_OBSERVER_KEY);
     public static final AttributeKey<ChannelOptions> CHANNEL_OPTIONS_ATR_KEY = AttributeKey.newInstance(CHANNEL_OPTIONS_KEY);
 
     // Handler names.
@@ -61,10 +61,11 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String HANDLER_PACKET_DECODER = "handler_packet_decoder";
     private static final String HANDLER_PACKET_ENCODER = "handler_packet_encoder";
     private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
+    private static final String HANDLER_CONSUMER_ENCODER = "handler_consumer_encoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
 
     // In/Out packet data end-point.
-    AbstractDataProxy consumerProxy;
+    private AbstractDataProxy consumerProxy;
 
     /**
      * Ctor.
@@ -104,7 +105,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         // Notify server connection listeners if any.
         if (options.isServer() && options.getConnectionListenerSet() != null)
         {
-            for (IConnectionListener listener : options.getConnectionListenerSet())
+            for (IConnectionObserver listener : options.getConnectionListenerSet())
             {
                 listener.notifyConnectionState(ch.toString(), EConnectionState.TRANSPORT_UP);
             }
@@ -123,7 +124,15 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
             }
         }
 
-        // TODO: add out handlers.
+        // Add additional consumer specific out handlers.
+        if (this.consumerProxy.getOutHandlerList() != null)
+        {
+            for (ChannelHandler handler : this.consumerProxy.getOutHandlerList())
+            {
+                ch.pipeline().addLast(String.format(HANDLER_CONSUMER_ENCODER, handler.getClass().getSimpleName()),
+                    handler);
+            }
+        }
 
         // Add actual data consumer end-point.
         ch.pipeline().addLast(HANDLER_PROXY, this.consumerProxy);
@@ -156,8 +165,6 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
                 new ReadTimeoutHandler(options.getReadTimeOutChannelExpirationSec(), TimeUnit.SECONDS));
         }
 
-        // TODO: add write timeout handler for client connections.
-
         // Add frame decoder and encoder.
         ch.pipeline().addLast(
             HANDLER_FRAME_DECODER,
@@ -173,6 +180,11 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         LOG.exitMethod();
     }
 
+    public AbstractDataProxy getConsumerProxy()
+    {
+        return this.consumerProxy;
+    }
+
     /**
      * Output some basic data about this initializer.
      */
@@ -181,7 +193,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClass().getName());
-        sb.append(" for proxy: [").append(this.consumerProxy).append("] ");
+        sb.append(" for proxy: [").append(this.consumerProxy.getName()).append("] ");
         return sb.toString();
     }
 }

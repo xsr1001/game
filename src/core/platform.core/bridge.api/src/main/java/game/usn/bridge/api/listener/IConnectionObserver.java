@@ -12,7 +12,7 @@ package game.usn.bridge.api.listener;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public interface IConnectionListener
+public interface IConnectionObserver
 {
     /**
      * Client connection state enumeration.

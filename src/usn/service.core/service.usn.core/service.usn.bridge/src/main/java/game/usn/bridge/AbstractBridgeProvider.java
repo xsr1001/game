@@ -9,7 +9,7 @@ import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.BridgeException;
-import game.usn.bridge.api.listener.IChannelListener;
+import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
@@ -63,6 +63,8 @@ public abstract class AbstractBridgeProvider
     private static final String ERROR_GENERAL_EXCEPTION = "General exception thrown.";
     private static final String ERROR_NPE = "Null pointer exception thrown.";
     private static final String ERROR_CHANNEL_EXCEPTION = "Channel exception thrown.";
+    private static final String ERROR_OBSERVER_NULL_PARAM = "Cannot notify observers due to null parameter.";
+    protected static final String WARN_OBSERVER_EXCEPTION = "Exception thrown while notifying channel listener. Guarding bridge...";
 
     // Default worker group size.
     private static final int DEFAULT_WORKER_GROUPSIZE = Runtime.getRuntime().availableProcessors();
@@ -104,14 +106,14 @@ public abstract class AbstractBridgeProvider
      *            - an instance of {@link USNPipelineInitializer} to initialize USN service stack to incoming
      *            connections.
      * @param listenerSet
-     *            - a {@link Set}<{@link IChannelListener}> to notify with server socket channel life-cycle events.
+     *            - a {@link Set}<{@link IChannelObserver}> to notify with server socket channel life-cycle events.
      * @param channelOptions
      *            - a {@link ChannelOptions} options for child channels containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideServiceBridge(int servicePort, final USNPipelineInitializer pipelineInitializer,
-        final Set<IChannelListener> listenerSet, final ChannelOptions channelOptions) throws BridgeException
+        final Set<IChannelObserver> listenerSet, final ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer,
             ARG_CHANNEL_OPTIONS, channelOptions);
@@ -127,7 +129,7 @@ public abstract class AbstractBridgeProvider
                 new InetSocketAddress(Inet4Address.getLocalHost(), servicePort), this.workerGroup, pipelineInitializer);
 
             // Add server listeners.
-            serverBootstrap.attr(USNPipelineInitializer.CHANNEL_LISTENER_ATR_KEY, new HashSet<IChannelListener>(
+            serverBootstrap.attr(USNPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
                 listenerSet));
 
             // Add channel options.
@@ -148,20 +150,44 @@ public abstract class AbstractBridgeProvider
                 {
                     if (future.isSuccess())
                     {
-                        for (IChannelListener listener : listenerSet)
+                        for (IChannelObserver listener : listenerSet)
                         {
-                            listener.notifyChannelUp(
-                                future.channel().pipeline().get(AbstractDataProxy.class).getName(),
-                                ((InetSocketAddress) future.channel().localAddress()).getPort());
+                            // Guard bridge from listener exceptions.
+                            try
+                            {
+                                listener.notifyChannelUp(pipelineInitializer.getConsumerProxy().getName(),
+                                    ((InetSocketAddress) future.channel().localAddress()).getPort());
+                            }
+                            catch (NullPointerException npe)
+                            {
+                                LOG.error(ERROR_OBSERVER_NULL_PARAM, npe);
+                            }
+                            catch (Exception e)
+                            {
+                                LOG.warn(WARN_OBSERVER_EXCEPTION, e);
+                            }
+
                         }
                         bridgeChannelSet.add(future.channel());
                     }
                     else
                     {
                         LOG.error(ERROR_SOCKET_BIND);
-                        for (IChannelListener listener : listenerSet)
+                        for (IChannelObserver listener : listenerSet)
                         {
-                            listener.notifyChannelError("");
+                            // Guard bridge from listener exceptions.
+                            try
+                            {
+                                listener.notifyChannelError(pipelineInitializer.getConsumerProxy().getName());
+                            }
+                            catch (NullPointerException npe)
+                            {
+                                LOG.error(ERROR_OBSERVER_NULL_PARAM, npe);
+                            }
+                            catch (Exception e)
+                            {
+                                LOG.warn(WARN_OBSERVER_EXCEPTION, e);
+                            }
                         }
                         return;
                     }
@@ -199,14 +225,14 @@ public abstract class AbstractBridgeProvider
      *            - an instance of {@link USNPipelineInitializer} to initialize USN client stack for outgoing
      *            connection.
      * @param listenerSet
-     *            - a {@link Set}<{@link IChannelListener}> to notify with client socket channel life-cycle events.
+     *            - a {@link Set}<{@link IChannelObserver}> to notify with client socket channel life-cycle events.
      * @param channelOptions
      *            - a {@link ChannelOptions} options for child channels containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideClientBridge(final SocketAddress remoteAddress,
-        final USNPipelineInitializer pipelineInitializer, final Set<IChannelListener> listenerSet,
+        final USNPipelineInitializer pipelineInitializer, final Set<IChannelObserver> listenerSet,
         final ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_PIPELINE_INITIALIZER, pipelineInitializer, ARG_CHANNEL_OPTIONS, channelOptions);
@@ -221,7 +247,7 @@ public abstract class AbstractBridgeProvider
             Bootstrap clientBootstrap = createBaseClientUSNStack(remoteAddress, this.workerGroup, pipelineInitializer);
 
             // Add client listeners.
-            clientBootstrap.attr(USNPipelineInitializer.CHANNEL_LISTENER_ATR_KEY, new HashSet<IChannelListener>(
+            clientBootstrap.attr(USNPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
                 listenerSet));
 
             // Add channel options.
@@ -242,19 +268,43 @@ public abstract class AbstractBridgeProvider
                 {
                     if (future.isSuccess())
                     {
-                        for (IChannelListener listener : listenerSet)
+                        for (IChannelObserver listener : listenerSet)
                         {
-                            listener.notifyChannelUp(
-                                future.channel().pipeline().get(AbstractDataProxy.class).getName(),
-                                ((InetSocketAddress) future.channel().remoteAddress()).getPort());
+                            // Guard bridge from listener exceptions.
+                            try
+                            {
+                                listener.notifyChannelUp(
+                                    future.channel().pipeline().get(AbstractDataProxy.class).getName(),
+                                    ((InetSocketAddress) future.channel().remoteAddress()).getPort());
+                            }
+                            catch (NullPointerException npe)
+                            {
+                                LOG.error(ERROR_OBSERVER_NULL_PARAM, npe);
+                            }
+                            catch (Exception e)
+                            {
+                                LOG.warn(WARN_OBSERVER_EXCEPTION, e);
+                            }
                         }
                         bridgeChannelSet.add(future.channel());
                     }
                     else
                     {
-                        for (IChannelListener listener : listenerSet)
+                        for (IChannelObserver listener : listenerSet)
                         {
-                            listener.notifyChannelError(future.channel().pipeline().get(AbstractDataProxy.class).getName());
+                            // Guard bridge from listener exceptions.
+                            try
+                            {
+                                listener.notifyChannelError(future.channel().pipeline().get(AbstractDataProxy.class).getName());
+                            }
+                            catch (NullPointerException npe)
+                            {
+                                LOG.error(ERROR_OBSERVER_NULL_PARAM, npe);
+                            }
+                            catch (Exception e)
+                            {
+                                LOG.warn(WARN_OBSERVER_EXCEPTION, e);
+                            }
                         }
                         LOG.error(ERROR_CONNECT, future.channel().remoteAddress());
                         return;
@@ -341,12 +391,24 @@ public abstract class AbstractBridgeProvider
         {
             try
             {
-                Set<IChannelListener> listenerSet = channel.attr(USNPipelineInitializer.CHANNEL_LISTENER_ATR_KEY).get();
+                Set<IChannelObserver> listenerSet = channel.attr(USNPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY).get();
                 if (listenerSet != null)
                 {
-                    for (IChannelListener listener : listenerSet)
+                    for (IChannelObserver observer : listenerSet)
                     {
-                        listener.notifyChannelDown(channel.pipeline().get(AbstractDataProxy.class).getName());
+                        // Guard bridge from observer exceptions.
+                        try
+                        {
+                            observer.notifyChannelDown(channel.pipeline().get(AbstractDataProxy.class).getName());
+                        }
+                        catch (NullPointerException npe)
+                        {
+                            LOG.error(ERROR_OBSERVER_NULL_PARAM, npe);
+                        }
+                        catch (Exception e)
+                        {
+                            LOG.warn(WARN_OBSERVER_EXCEPTION, e);
+                        }
                     }
                 }
                 channel.close().syncUninterruptibly();

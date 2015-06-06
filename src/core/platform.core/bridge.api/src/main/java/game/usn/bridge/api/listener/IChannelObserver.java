@@ -12,7 +12,7 @@ package game.usn.bridge.api.listener;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public interface IChannelListener
+public interface IChannelObserver
 {
     /**
      * Notify channel up. This represents successful bind for service channel and successful connect with remote USN

@@ -1,13 +1,13 @@
 /**
  * @file USNBridgeManager.java
- * @brief USNBridgeManager provided functionality for registering service and client proxies to USN. 
+ * @brief USNBridgeManager provides functionality for registering service and client proxies to USN. 
  */
 
 package game.usn.bridge;
 
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.BridgeException;
-import game.usn.bridge.api.listener.IChannelListener;
+import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
@@ -26,12 +26,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public final class USNBridgeManager extends AbstractBridgeProvider implements IChannelListener
+public final class USNBridgeManager extends AbstractBridgeProvider implements IChannelObserver
 {
     // Errors, messages, args.
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_PROXY_REGISTER = "Error registering new proxy: [%s].";
-    private static final String WARN_PROXY_REGISTERED = "%s proxy: [%s] has already been registered.";
+    private static final String ERROR_PROXY_REGISTERED = "%s proxy: [%s] has already been registered.";
     private static final String PROXY_REGISTER1 = "Service";
     private static final String PROXY_REGISTER2 = "Client";
     private static final String MSG_NEW_PROXY = "Registering new %s proxy: [%s] to host [%s].";
@@ -43,7 +43,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
     private static final String ARG_REMOTE_PORT = "remoteHostPort";
     private static final String ARG_REMOTE_HOST = "remoteHostIPv4";
     private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
-    private static final String ARG_CHANNEL_LISTENERS = "channelListenersSet";
+    private static final String ARG_CHANNEL_OBSERVERS = "channelObserversSet";
     private static final String ARG_LOCALHOST = "localhost";
 
     // Singleton instance.
@@ -81,10 +81,10 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * @param serviceProxy
      *            - an {@link AbstractDataProxy} service data end-point which serves as a data sink and provides service
      *            specific protocol stack.
-     * @param channelListenerSet
-     *            - a {@link Set}<{@link IChannelListener}> set of channel listeners. Service channel life-cycle events
-     *            will be notified to provided listeners. It is preferred to provide at least one consumer specific
-     *            listener to listen for proxy registration results and channel life-cycle events.
+     * @param channelOBserverSet
+     *            - a {@link Set}<{@link IChannelObserver}> set of channel observers. Service channel life-cycle events
+     *            will be notified to provided observers. It is preferred to provide at least one consumer specific
+     *            observer to observe proxy registration results and channel life-cycle events.
      * @param servicePort
      *            - a network port to bind service on. 0 represents wild-card port.
      * @param channelOptions
@@ -93,7 +93,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      *             - throw {@link BridgeException} on error.
      */
     public synchronized void registerServiceProxy(AbstractDataProxy serviceProxy,
-        final Set<IChannelListener> channelListenerSet, int servicePort, ChannelOptions channelOptions)
+        final Set<IChannelObserver> channelObserverSet, int servicePort, ChannelOptions channelOptions)
         throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PROXY, serviceProxy, ARG_SERVICE_PORT, servicePort, ARG_CHANNEL_OPTIONS,
@@ -103,7 +103,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         {
             ArgsChecker.errorOnNull(serviceProxy, ARG_SERVICE_PROXY);
             ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
-            ArgsChecker.errorOnNull(channelListenerSet, ARG_CHANNEL_LISTENERS);
+            ArgsChecker.errorOnNull(channelObserverSet, ARG_CHANNEL_OBSERVERS);
             ArgsChecker.errorOnLessThan0(servicePort, ARG_SERVICE_PORT);
 
             USNBridgeUtil.validateChannelOptions(channelOptions, true);
@@ -114,18 +114,27 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
             throw new BridgeException(ERROR_ILLEGAL_ARGUMENT, ie);
         }
 
-        // Check if given proxy has already been registered. Notify listeners if already registered.
+        // Check if given proxy has already been registered. Notify observers if already registered.
         try
         {
             this.rwLock.readLock().lock();
             if (this.proxySet.contains(serviceProxy))
             {
-                LOG.warn(String.format(WARN_PROXY_REGISTERED, PROXY_REGISTER1, serviceProxy));
-                if (channelListenerSet != null)
+                LOG.error(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER1, serviceProxy.getName()));
+                if (channelObserverSet != null)
                 {
-                    for (IChannelListener listener : channelListenerSet)
+
+                    for (IChannelObserver observer : channelObserverSet)
                     {
-                        listener.notifyChannelError(serviceProxy.getName());
+                        // Guard bridge from observer exceptions.
+                        try
+                        {
+                            observer.notifyChannelError(serviceProxy.getName());
+                        }
+                        catch (Exception e)
+                        {
+                            LOG.warn(WARN_LISTENER_EXCEPTION, e);
+                        }
                     }
                 }
                 return;
@@ -139,11 +148,11 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         LOG.info(MSG_NEW_PROXY, PROXY_REGISTER1, serviceProxy.getName(),
             ARG_LOCALHOST.concat(Integer.toString(servicePort)));
 
-        // Add self to listener set to receive actual service channel life-cycle status.
-        channelListenerSet.add(this);
+        // Add self to observer set to receive actual service channel life-cycle status.
+        channelObserverSet.add(this);
 
         // Attempt to create the whole service stack and bind the service end-point.
-        provideServiceBridge(servicePort, new USNPipelineInitializer(serviceProxy), channelListenerSet, channelOptions);
+        provideServiceBridge(servicePort, new USNPipelineInitializer(serviceProxy), channelObserverSet, channelOptions);
 
         try
         {
@@ -167,7 +176,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      *            - an {@link AbstractDataProxy} client data end-point which serves as a data sink and provides client
      *            specific protocol stack.
      * @param channelListenerSet
-     *            - a {@link Set}<{@link IChannelListener}> set of channel listeners. Service channel life-cycle events
+     *            - a {@link Set}<{@link IChannelObserver}> set of channel listeners. Service channel life-cycle events
      *            will be notified to provided listeners. It is preferred to provide at least one consumer specific
      *            listener to listen for proxy registration results and channel life-cycle events.
      * @param remoteHostPort
@@ -180,7 +189,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      *             - throw {@link BridgeException} on error.
      */
     public synchronized void registerClientProxy(AbstractDataProxy clientProxy,
-        final Set<IChannelListener> channelListenerSet, short remoteHostPort, String remoteHostIPv4,
+        final Set<IChannelObserver> channelObserverSet, short remoteHostPort, String remoteHostIPv4,
         ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_CLIENT_PROXY, clientProxy, ARG_REMOTE_PORT, remoteHostPort, ARG_REMOTE_HOST,
@@ -190,8 +199,8 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         {
             ArgsChecker.errorOnNull(clientProxy, ARG_SERVICE_PROXY);
             ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
-            ArgsChecker.errorOnNull(channelListenerSet, ARG_CHANNEL_LISTENERS);
-            ArgsChecker.errorOnNull(remoteHostIPv4, ARG_CHANNEL_LISTENERS);
+            ArgsChecker.errorOnNull(channelObserverSet, ARG_CHANNEL_OBSERVERS);
+            ArgsChecker.errorOnNull(remoteHostIPv4, ARG_CHANNEL_OBSERVERS);
             ArgsChecker.errorOnLessThan0(remoteHostPort, ARG_REMOTE_PORT);
 
             USNBridgeUtil.validateChannelOptions(channelOptions, false);
@@ -202,18 +211,26 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
             throw new BridgeException(ERROR_ILLEGAL_ARGUMENT, ie);
         }
 
-        // Check if given proxy has already been registered. Notify listeners if already registered.
+        // Check if given proxy has already been registered. Notify observers if already registered.
         try
         {
             this.rwLock.readLock().lock();
             if (this.proxySet.contains(clientProxy))
             {
-                LOG.warn(String.format(WARN_PROXY_REGISTERED, PROXY_REGISTER2, clientProxy));
-                if (channelListenerSet != null)
+                LOG.warn(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER2, clientProxy));
+                if (channelObserverSet != null)
                 {
-                    for (IChannelListener listener : channelListenerSet)
+                    for (IChannelObserver observer : channelObserverSet)
                     {
-                        listener.notifyChannelError(clientProxy.getName());
+                        // Guard bridge from observer exceptions.
+                        try
+                        {
+                            observer.notifyChannelError(clientProxy.getName());
+                        }
+                        catch (Exception e)
+                        {
+                            LOG.warn(WARN_LISTENER_EXCEPTION, e);
+                        }
                     }
                 }
                 return;

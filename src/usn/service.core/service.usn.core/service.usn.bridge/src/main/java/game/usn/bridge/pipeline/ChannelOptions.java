@@ -5,7 +5,7 @@
 
 package game.usn.bridge.pipeline;
 
-import game.usn.bridge.api.listener.IConnectionListener;
+import game.usn.bridge.api.listener.IConnectionObserver;
 import game.usn.bridge.util.USNBridgeUtil;
 
 import java.util.HashSet;
@@ -31,7 +31,7 @@ public class ChannelOptions
     private boolean server;
 
     // Listeners for client connection event. Server option only.
-    Set<IConnectionListener> connectionListenerSet;
+    Set<IConnectionObserver> connectionListenerSet;
 
     /**
      * No arg ctor.
@@ -51,15 +51,15 @@ public class ChannelOptions
      * @param server
      *            - determines whether these options are server specific or client specific.
      * @param externalConnectionListenerSet
-     *            - a {@link Set}<{@link IConnectionListener}> of connection listeners. Provides a way to notify
+     *            - a {@link Set}<{@link IConnectionObserver}> of connection listeners. Provides a way to notify
      *            external listeners about client connection events.
      */
     public ChannelOptions(boolean isSSLEnabled, int readTimeoutSeconds, boolean server,
-        Set<IConnectionListener> externalConnectionListenerSet)
+        Set<IConnectionObserver> externalConnectionListenerSet)
     {
         this.SSLEnabled = isSSLEnabled;
         this.server = server;
-        this.connectionListenerSet = new HashSet<IConnectionListener>(externalConnectionListenerSet);
+        this.connectionListenerSet = new HashSet<IConnectionObserver>(externalConnectionListenerSet);
         this.readTimeOutChannelExpirationSec = readTimeoutSeconds;
     }
 
@@ -100,12 +100,12 @@ public class ChannelOptions
         this.server = server;
     }
 
-    public Set<IConnectionListener> getConnectionListenerSet()
+    public Set<IConnectionObserver> getConnectionListenerSet()
     {
         return connectionListenerSet;
     }
 
-    public void setConnectionListenerSet(Set<IConnectionListener> connectionListenerSet)
+    public void setConnectionListenerSet(Set<IConnectionObserver> connectionListenerSet)
     {
         this.connectionListenerSet = connectionListenerSet;
     }

@@ -5,12 +5,12 @@
 
 package game.usn.bridge.test.data;
 
-import game.usn.bridge.api.listener.IChannelListener;
+import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
-public class TestService extends AbstractDataProxy implements IChannelListener
+public class TestService extends AbstractDataProxy implements IChannelObserver
 {
 
     public boolean channelup = false;

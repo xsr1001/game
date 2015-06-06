@@ -7,8 +7,8 @@ package game.usn.bridge.test;
 
 import game.usn.bridge.USNBridgeManager;
 import game.usn.bridge.api.BridgeException;
-import game.usn.bridge.api.listener.IChannelListener;
-import game.usn.bridge.api.listener.IConnectionListener;
+import game.usn.bridge.api.listener.IChannelObserver;
+import game.usn.bridge.api.listener.IConnectionObserver;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.test.data.TestService;
 
@@ -36,12 +36,12 @@ public class BridgeServiceE2ETest
 {
     private static ChannelOptions serverOptions;
     private TestService testservice;
-    Set<IChannelListener> listenerSet;
+    Set<IChannelObserver> listenerSet;
 
     @BeforeClass
     public static void beforeClass()
     {
-        Set<IConnectionListener> connSet = new HashSet<IConnectionListener>();
+        Set<IConnectionObserver> connSet = new HashSet<IConnectionObserver>();
         serverOptions = new ChannelOptions(false, 5, true, connSet);
     }
 
@@ -49,7 +49,7 @@ public class BridgeServiceE2ETest
     public void before()
     {
         this.testservice = new TestService();
-        this.listenerSet = new HashSet<IChannelListener>();
+        this.listenerSet = new HashSet<IChannelObserver>();
         this.listenerSet.add(this.testservice);
     }
 
