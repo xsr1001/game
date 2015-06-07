@@ -6,9 +6,9 @@
 package game.usn.bridge.test.pipeline;
 
 import game.usn.bridge.pipeline.encoder.USNPacketEncoder;
-import game.usn.bridge.test.data.TestPacket;
-import game.usn.bridge.test.data.TestServiceProtocol;
-import game.usn.bridge.test.data.UnknownPacket;
+import game.usn.bridge.test.e2e.data.UnknownPacket;
+import game.usn.bridge.test.pipeline.data.TestPacket;
+import game.usn.bridge.test.pipeline.data.TestServiceProtocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 

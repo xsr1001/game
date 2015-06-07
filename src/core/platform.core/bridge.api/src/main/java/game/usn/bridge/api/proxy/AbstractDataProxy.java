@@ -46,4 +46,11 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter
     {
         return this.consumerProtocol;
     }
+
+    @Override
+    public String toString()
+    {
+        return getName();
+    }
+
 }

@@ -22,7 +22,7 @@ import java.util.Set;
 public class ChannelOptions
 {
     // Read timeout in seconds. Server option only.
-    private int readTimeOutChannelExpirationSec = -1;
+    private int readTimeOutChannelExpirationSec;
 
     // Enable or disable SSL.
     private boolean SSLEnabled;
@@ -38,7 +38,7 @@ public class ChannelOptions
      */
     public ChannelOptions()
     {
-
+        this.readTimeOutChannelExpirationSec = -1;
     }
 
     /**

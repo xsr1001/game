@@ -79,8 +79,8 @@ public class LoggerTest
         try
         {
             logger.exitMethod(null, null);
-            logger.exitMethod(null, "describe");
-            logger.exitMethod(new Object(), null);
+            logger.exitMethod("describe", null);
+            logger.exitMethod(null, new Object());
         }
         catch (Exception e)
         {
@@ -92,7 +92,7 @@ public class LoggerTest
         // TEST EXIT WITH PARAMS 2
         try
         {
-            logger.exitMethod(new Object(), "Exit method description ok.");
+            logger.exitMethod("Exit method description ok.", new Object());
         }
         catch (Exception e)
         {
@@ -126,7 +126,7 @@ public class LoggerTest
 
         try
         {
-            logger.enterMethod(null, "Valid description");
+            logger.enterMethod("Valid description", null);
         }
         catch (Exception e)
         {
@@ -146,9 +146,9 @@ public class LoggerTest
         }
         try
         {
-            logger.enterMethod(new String("Param 1"), "param 1 description", new Integer(5), "param 2 description",
-                Arrays.asList(new Object[] { new Object(), new Object() }), "List description", new TestClass(),
-                "Test class desc");
+            logger.enterMethod("param 1 description", new String("Param 1"), "param 2 description", new Integer(5),
+                "List description", Arrays.asList(new Object[] { new Object(), new Object() }), "Test class desc",
+                new TestClass());
         }
         catch (Exception e)
         {

@@ -3,7 +3,7 @@
  * @brief TestPacket2.
  */
 
-package game.usn.bridge.test.data;
+package game.usn.bridge.test.pipeline.data;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
 import io.netty.buffer.ByteBuf;

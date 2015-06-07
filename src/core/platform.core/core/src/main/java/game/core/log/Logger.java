@@ -106,16 +106,16 @@ public final class Logger
     /**
      * Log method exit as trace log.
      * 
-     * @param object
-     *            - a {@link Object} to log.
      * @param description
      *            a {@link String} description of object.
+     * @param object
+     *            - a {@link Object} to log.
      */
-    public void exitMethod(Object object, String description)
+    public void exitMethod(String description, Object object)
     {
         StringBuilder sb = new StringBuilder();
         sb.append(MSG_EXIT_METHOD).append(" ").append(MSG_EXIT_PARAM).append(System.lineSeparator());
-        sb.append(String.valueOf(object)).append(':').append(description);
+        sb.append(description).append(':').append(String.valueOf(object));
         this.log.trace(sb.toString());
     }
 

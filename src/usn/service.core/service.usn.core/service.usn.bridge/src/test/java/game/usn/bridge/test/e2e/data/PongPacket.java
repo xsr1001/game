@@ -1,20 +1,14 @@
 /**
- * @file TestPacket.java
- * @brief TestPacket.
+ * @file PongPacket.java
+ * @brief <description>
  */
 
-package game.usn.bridge.test.data;
+package game.usn.bridge.test.e2e.data;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
 import io.netty.buffer.ByteBuf;
 
-/**
- * Test packet for Unit tests.
- * 
- * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
- *
- */
-public class TestPacket extends AbstractPacket
+public class PongPacket extends AbstractPacket
 {
     // Test String field.
     private String testString;
@@ -22,9 +16,9 @@ public class TestPacket extends AbstractPacket
     /**
      * Ctor.
      */
-    public TestPacket()
+    public PongPacket()
     {
-        this.testString = "hello-world";
+        this.testString = "pong";
     }
 
     @Override

@@ -6,7 +6,7 @@
 package game.usn.bridge;
 
 import game.core.util.ArgsChecker;
-import game.usn.bridge.api.BridgeException;
+import game.usn.bridge.api.exception.BridgeException;
 import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.ChannelOptions;
@@ -30,13 +30,12 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
 {
     // Errors, messages, args.
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
-    private static final String ERROR_PROXY_REGISTER = "Error registering new proxy: [%s].";
     private static final String ERROR_PROXY_REGISTERED = "%s proxy: [%s] has already been registered.";
     private static final String PROXY_REGISTER1 = "Service";
     private static final String PROXY_REGISTER2 = "Client";
     private static final String MSG_NEW_PROXY = "Registering new %s proxy: [%s] to host [%s].";
-    private static final String MSG_PROXY_REGISTERED = "Successfully registered new proxy: [%s] on port: [%d].";
-    private static final String MSG_PROXY_UNREGISTERED = "Successfully unregistered new proxy: [%s].";
+    private static final String MSG_PROXY_REGISTERED = "Successfully registered new proxy: [%s] on address: [%s].";
+    private static final String MSG_PROXY_UNREGISTERED = "Successfully unregistered or error with new proxy: [%s].";
     private static final String ARG_SERVICE_PROXY = "serviceProxy";
     private static final String ARG_CLIENT_PROXY = "clientProxy";
     private static final String ARG_SERVICE_PORT = "servicePort";
@@ -118,25 +117,11 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         try
         {
             this.rwLock.readLock().lock();
-            if (this.proxySet.contains(serviceProxy))
+            if (this.proxySet.contains(serviceProxy.getName()))
             {
                 LOG.error(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER1, serviceProxy.getName()));
-                if (channelObserverSet != null)
-                {
 
-                    for (IChannelObserver observer : channelObserverSet)
-                    {
-                        // Guard bridge from observer exceptions.
-                        try
-                        {
-                            observer.notifyChannelError(serviceProxy.getName());
-                        }
-                        catch (Exception e)
-                        {
-                            LOG.warn(WARN_LISTENER_EXCEPTION, e);
-                        }
-                    }
-                }
+                notifyObservers(channelObserverSet, serviceProxy.getName(), null, false);
                 return;
             }
         }
@@ -189,7 +174,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      *             - throw {@link BridgeException} on error.
      */
     public synchronized void registerClientProxy(AbstractDataProxy clientProxy,
-        final Set<IChannelObserver> channelObserverSet, short remoteHostPort, String remoteHostIPv4,
+        final Set<IChannelObserver> channelObserverSet, int remoteHostPort, String remoteHostIPv4,
         ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_CLIENT_PROXY, clientProxy, ARG_REMOTE_PORT, remoteHostPort, ARG_REMOTE_HOST,
@@ -218,21 +203,8 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
             if (this.proxySet.contains(clientProxy))
             {
                 LOG.warn(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER2, clientProxy));
-                if (channelObserverSet != null)
-                {
-                    for (IChannelObserver observer : channelObserverSet)
-                    {
-                        // Guard bridge from observer exceptions.
-                        try
-                        {
-                            observer.notifyChannelError(clientProxy.getName());
-                        }
-                        catch (Exception e)
-                        {
-                            LOG.warn(WARN_LISTENER_EXCEPTION, e);
-                        }
-                    }
-                }
+
+                notifyObservers(channelObserverSet, clientProxy.getName(), null, false);
                 return;
             }
         }
@@ -242,14 +214,14 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         }
 
         LOG.info(MSG_NEW_PROXY, PROXY_REGISTER2, clientProxy.getName(),
-            remoteHostIPv4.concat(Short.toString(remoteHostPort)));
+            remoteHostIPv4.concat(Integer.toString(remoteHostPort)));
 
         // Add self to listener set to receive actual client channel life-cycle status.
-        channelListenerSet.add(this);
+        channelObserverSet.add(this);
 
         // Attempt to create the whole client stack and connect with remote host end-point.
         provideClientBridge(new InetSocketAddress(remoteHostIPv4, remoteHostPort), new USNPipelineInitializer(
-            clientProxy), channelListenerSet, channelOptions);
+            clientProxy), channelObserverSet, channelOptions);
 
         try
         {
@@ -267,9 +239,9 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
     }
 
     @Override
-    public void notifyChannelUp(String proxyName, int port)
+    public void notifyChannelUp(String proxyName, InetSocketAddress address)
     {
-        LOG.info(String.format(MSG_PROXY_REGISTERED, proxyName, port));
+        LOG.info(String.format(MSG_PROXY_REGISTERED, proxyName, address));
     }
 
     @Override
@@ -279,23 +251,8 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         try
         {
             this.rwLock.writeLock().lock();
-            this.proxySet.remove(proxyName);
-        }
-        finally
-        {
-            this.rwLock.writeLock().unlock();
-        }
-    }
 
-    @Override
-    public void notifyChannelError(String proxyName)
-    {
-        LOG.error(String.format(ERROR_PROXY_REGISTER, proxyName));
-        try
-        {
-            this.rwLock.writeLock().lock();
-
-            // No need to notify consumer listeners, as everyone should have been notified from internal channel result
+            // No need to notify consumer observers, as everyone should have been notified from internal channel result
             // listener.
             this.proxySet.remove(proxyName);
         }

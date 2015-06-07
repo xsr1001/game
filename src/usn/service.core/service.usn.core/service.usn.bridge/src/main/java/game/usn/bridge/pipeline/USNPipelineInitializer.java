@@ -8,7 +8,7 @@ package game.usn.bridge.pipeline;
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
-import game.usn.bridge.api.BridgeException;
+import game.usn.bridge.api.exception.BridgeException;
 import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.listener.IConnectionObserver;
 import game.usn.bridge.api.listener.IConnectionObserver.EConnectionState;
@@ -98,7 +98,15 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
             throw new BridgeException(ERROR_NO_CHANNEL_OPTIONS);
         }
 
-        String hostAddress = ((InetSocketAddress) ch.remoteAddress()).getAddress().toString();
+        String hostAddress = null;
+        if (ch.remoteAddress() != null)
+        {
+            hostAddress = ((InetSocketAddress) ch.remoteAddress()).getAddress().toString();
+        }
+        else if (ch.localAddress() != null)
+        {
+            hostAddress = ((InetSocketAddress) ch.localAddress()).getAddress().toString();
+        }
         LOG.info(String.format(MSG_NEW_CONNECTION_FORMAT, options.isServer() ? MSG_NEW_CONNECTION1
             : MSG_NEW_CONNECTION2, hostAddress));
 
@@ -153,10 +161,6 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private void initBaseUSNPipeline(Channel ch, ChannelOptions options)
     {
         LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
-        if (options.isSSLEnabled())
-        {
-            // TODO: Add SSL decoder. Maybe put this higher in the chain, check Netty supported SSL mechanisms.
-        }
 
         // Enable read timeout handler for incoming connections.
         if (options.isServer() && options.isEnableReadTimeoutHandler())
@@ -180,6 +184,11 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         LOG.exitMethod();
     }
 
+    /**
+     * Getter for abstract data proxy.
+     * 
+     * @return - return {@link AbstractDataProxy} associated with this connection.
+     */
     public AbstractDataProxy getConsumerProxy()
     {
         return this.consumerProxy;
