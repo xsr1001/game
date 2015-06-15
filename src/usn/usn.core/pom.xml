@@ -1,23 +1,32 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>game</groupId>
-  <artifactId>platform.core</artifactId>
+  <artifactId>usn.core</artifactId>
   <version>0.0.2-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>game-platform-core</name>
-  <description>Core platform functionality for game modules.</description>
+  <name>game-usn-core</name>
+  <description>Core functionality for unified service network.</description>
   <modules>
-  	<module>core</module>
-  	<module>bridge.api</module>
-  	<module>core.api</module>
+  	<module>usn.service.discovery</module>
+  	<module>usn.bridge</module>
   </modules>
   <dependencyManagement>
   	<dependencies>
   		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.10</version>
-		</dependency>
+  			<groupId>game</groupId>
+  			<artifactId>core</artifactId>
+  			<version>0.0.2-SNAPSHOT</version>
+  		</dependency>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>bridge.api</artifactId>
+  			<version>0.0.2-SNAPSHOT</version>
+  		</dependency>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>core.api</artifactId>
+  			<version>0.0.2-SNAPSHOT</version>
+  		</dependency>
   	</dependencies>
   </dependencyManagement>
   <build>
@@ -33,10 +42,4 @@
 		</plugin>
 	</plugins>
   </build>
-  <dependencies>
-  	<dependency>
-  		<groupId>junit</groupId>
-  		<artifactId>junit</artifactId>
-  	</dependency>
-  </dependencies>
 </project>

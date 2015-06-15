@@ -1,0 +1,29 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>game</groupId>
+    <artifactId>usn.bridge</artifactId>
+    <version>0.0.2-SNAPSHOT</version>
+  </parent>
+  <artifactId>usn.bridge.impl</artifactId>
+  <name>game-usn-bridge-impl</name>
+  <description>Implementation for USN bridge.</description>
+  <dependencies>
+  	<dependency>
+  		<groupId>io.netty</groupId>
+  		<artifactId>netty-all</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>core.api</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>core</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>bridge.api</artifactId>
+  	</dependency>
+  </dependencies>
+</project>
