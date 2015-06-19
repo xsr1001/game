@@ -12,12 +12,17 @@ import game.core.util.ArgsChecker;
 import game.core.util.NetworkUtils;
 import game.usn.sd.endpoint.IUSNEndpoint;
 import game.usn.sd.environment.IEnvironmentManager;
+import game.usn.sd.listener.IServiceDiscoveryListener;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
@@ -31,23 +36,35 @@ import javax.jmdns.ServiceListener;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public final class USNSDManager
+public final class USNSDManager implements ServiceListener
 {
     // Logger.
     private static final Logger LOG = LoggerFactory.getLogger(USNSDManager.class);
 
     // Errors, args, messages.
+    private static final String ERROR_IO_EXCEPTION = "I/O error received while using DNSSD controller.";
+    private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
+    private static final String ERROR_USN_EXCEPTION = "USN exception thrown from environment manager.";
+    private static final String ERROR_NFE = "Number format exception thrown while converting shard/group id.";
+    private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified.";
     private static final String ARG_ENDPOINT_NETWORK_PORT = "endpointNetworkPort";
     private static final String ARG_ENDPOINT_NAME = "endpointName";
     private static final String ARG_ENDPOINT_SHARD_ID = "shardId";
     private static final String ARG_ENDPOINT_GROUP_ID = "groupId";
     private static final String ARG_ENDPOINT_ID = "endpointId";
     private static final String ARG_USN_EDNPOINT = "endpoint";
+    private static final String ARG_ENDPOINT_SERVICE_TYPE = "endpointServiceType";
+    private static final String ARG_SERVICE_DISCOVERY_LISTENER = "serviceDiscoveryListener";
     private static final String ARG_ENDPOINT_PROPS_MAP = "endpointPropertiesMap";
     private static final String ARG_ENVIRONMENT_MANAGER = "environmentManager";
-    private static final String ERROR_IO_EXCEPTION = "I/O error received while using DNSSD controller.";
-    private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String MSG_REGISTERING_ENDPOINT = "Registering new end-point ot USN: [%s]";
+    private static final String MSG_BROWSE = "Browsing for USN end-point with type: [%s], shardId: [%d], groupId: [%d].";
+    private static final String MSG_STOP_BROWSE = "Stopping browsing for USN end-point with type: [%s], shardId: [%d], groupId: [%d].";
+    private static final String MSG_ALREADY_BROWSING = "Already browsing for USN end-point with type: [%s], shardId: [%d], groupId: [%d].";
+    private static final String MSG_SERVICE_ADDED = "Service: [%s --> %s] has been added.";
+    private static final String MSG_SERVICE_REMOVED = "Service: [%s --> %s] has been removed.";
+    private static final String MSG_SERVICE_RESOLVED = "Service: [%s] has been resolved. Notifying listeners.";
+    private static final String MSG_NO_LISTENERS = "No listeners present for service type: [%s], shard id: [%d], group id: [%d].";
 
     // Optional service map info keys and other service type keys.
     private static final String KEY_GROUP_ID = "gId";
@@ -55,26 +72,34 @@ public final class USNSDManager
     private static final String KEY_SERVICE_PROTOCOL_TCP = "_tcp";
     private static final String KEY_DOT_DELIMETER = ".";
 
+    // Default group and shard id.
+    private static final int DEFAULT_SHARD_ID = -1;
+    private static final int DEFAULT_GROUP_ID = -1;
+
     // Singleton instance.
     private static USNSDManager instance;
 
     // Determines if USNSDManager is initialized.
     private AtomicBoolean initialized;
 
-    private static final String ERROR_USN_EXCEPTION = "USN exception thrown from environment manager.";
-
     // Service discovery controller.
-    private JmDNS sdController;
+    public JmDNS sdController;
 
     // User/domain specific environment manager.
     IEnvironmentManager environmentManager;
+
+    // Browse map. Maps service type to shard id to group id to list of service listeners.
+    private Map<String, Map<Integer, Map<Integer, Set<IServiceDiscoveryListener>>>> browseMap;
+
+    // Browse map synchronization.
+    private ReentrantReadWriteLock rwLockBrowseMap;
 
     /**
      * Singleton getter.
      * 
      * @param environmentManager
      *            - implementation of {@link IEnvironmentManager}. Implementation may be specific to user desired
-     *            security setting and/or domain constraints. This parameter is only required on initial instantiation.
+     *            security settings and/or domain constraints. This parameter is only required on initial instantiation.
      *            It can be null on all subsequent calls.
      * @return - the only instance of {@link USNSDManager}.
      * @throws USNException
@@ -101,7 +126,6 @@ public final class USNSDManager
         }
         finally
         {
-
             LOG.exitMethod();
         }
     }
@@ -116,7 +140,11 @@ public final class USNSDManager
     private USNSDManager(IEnvironmentManager environmentManager)
     {
         this.initialized = new AtomicBoolean(false);
+
         this.environmentManager = environmentManager;
+
+        this.browseMap = new HashMap<String, Map<Integer, Map<Integer, Set<IServiceDiscoveryListener>>>>();
+        this.rwLockBrowseMap = new ReentrantReadWriteLock();
     }
 
     /**
@@ -139,10 +167,10 @@ public final class USNSDManager
     }
 
     /**
-     * Attempts to register an end-point on Unified Service Network. A fully qualified USN entry is composed as:
-     * [<shardId>._sub.<endpointServiceType>._tcp.<environmentDomain>.<domain>.] A fully qualified USN entry MUST
-     * provide a user specific end-point name and a valid USN shard id. Optionally it MAY provide USN group id and
-     * additional properties map.
+     * Attempts to register an end-point on Unified Service Network. A fully qualified USN end-point is composed as:
+     * [<shardId>._sub.<endpointServiceType>._tcp.<environmentDomain>.<domain>.] A fully qualified USN end-point MUST
+     * provide a specific end-point name and a valid USN shard id. Optionally it MAY provide USN group id and additional
+     * properties map.
      * 
      * @param endpointNetworkPort
      *            - network port which end-point provides its service on. End-point must be actively accepting new
@@ -208,18 +236,14 @@ public final class USNSDManager
                 servicePropertyMap.putAll(servicePropertyMap);
             }
 
-            // Construct fully qualified service type.
-            StringBuilder sb = new StringBuilder();
-            sb.append(this.environmentManager.getSDEndpointType(endpoint)).append(KEY_DOT_DELIMETER);
-            sb.append(KEY_SERVICE_PROTOCOL_TCP).append(KEY_DOT_DELIMETER);
-            sb.append(this.environmentManager.getEnvironmentId(endpoint)).append(KEY_DOT_DELIMETER);
-            sb.append(this.environmentManager.getDomain()).append(KEY_DOT_DELIMETER);
+            // Create service info and register.
+            ServiceInfo serviceEntry = ServiceInfo.create(
+                constructServiceType(this.environmentManager.getSDEndpointType(endpoint), KEY_SERVICE_PROTOCOL_TCP,
+                    this.environmentManager.getEnvironmentId(), this.environmentManager.getDomain()), endpointName,
+                shardId.toString(), endpointNetworkPort, 0, 0, servicePropertyMap);
 
-            ServiceInfo serviceEnty = ServiceInfo.create(sb.toString(), endpointName, shardId.toString(),
-                endpointNetworkPort, 0, 0, servicePropertyMap);
-
-            LOG.info(String.format(MSG_REGISTERING_ENDPOINT, serviceEnty.toString()));
-            this.sdController.registerService(serviceEnty);
+            LOG.info(String.format(MSG_REGISTERING_ENDPOINT, serviceEntry.toString()));
+            this.sdController.registerService(serviceEntry);
         }
         catch (IllegalArgumentException iae)
         {
@@ -242,46 +266,394 @@ public final class USNSDManager
         }
     }
 
-    public static void doBrowse()
+    /**
+     * Browse for an end-point on USN.
+     * 
+     * @param endpointServiceType
+     *            - an {@link String} environment valid end-point service type. This must be one of the types returned
+     *            from {@link IEnvironmentManager#getSDEndpointType(IUSNEndpoint)} call.
+     * @param shardId
+     *            - an {@link Integer} environment valid shard id. Optional parameter to limit the search to set of
+     *            end-points determined by shard id.
+     * @param groupId
+     *            - an {@link Integer} valid group id. Optional parameter to limit the search to set of end-points
+     *            determined by group id.
+     * @param serviceDiscoveryListener
+     *            - an implementation of {@link IServiceDiscoveryListener} providing browse results callback.
+     * @throws USNException
+     *             - throw a {@link USNException} on browse error.
+     */
+    public void browse(String endpointServiceType, Integer shardId, Integer groupId,
+        IServiceDiscoveryListener serviceDiscoveryListener) throws USNException
     {
+        LOG.enterMethod(ARG_ENDPOINT_SERVICE_TYPE, endpointServiceType, ARG_ENDPOINT_SHARD_ID, shardId,
+            ARG_ENDPOINT_GROUP_ID, groupId, ARG_SERVICE_DISCOVERY_LISTENER, serviceDiscoveryListener);
         try
         {
-            final JmDNS jmdns = JmDNS.create();
-            jmdns.addServiceListener("_admin._tcp.dev.local.", new SampleListener());
+            ArgsChecker.errorOnNull(endpointServiceType, ARG_ENDPOINT_SERVICE_TYPE);
+            ArgsChecker.errorOnNull(serviceDiscoveryListener, ARG_SERVICE_DISCOVERY_LISTENER);
+            this.environmentManager.validateSDEndpointType(endpointServiceType);
+
+            doSanityCheck();
+
+            // Default browse shard id is -1.
+            if (shardId == null)
+            {
+                shardId = new Integer(DEFAULT_SHARD_ID);
+            }
+
+            // Default browse group id is -1.
+            if (groupId == null)
+            {
+                groupId = new Integer(DEFAULT_GROUP_ID);
+            }
+
+            if (!addBrowseEntry(endpointServiceType, shardId, groupId, serviceDiscoveryListener))
+            {
+                LOG.info(String.format(MSG_ALREADY_BROWSING, endpointServiceType, shardId, groupId));
+                return;
+            }
+
+            LOG.info(String.format(MSG_BROWSE, endpointServiceType, shardId, groupId));
+
+            // Browse.
+            this.sdController.addServiceListener(
+                constructServiceType(endpointServiceType, KEY_SERVICE_PROTOCOL_TCP,
+                    this.environmentManager.getEnvironmentId(), this.environmentManager.getDomain()), this);
         }
-        catch (Exception ioe)
+        catch (IOException ioe)
         {
-            System.err.println(ioe);
+            LOG.error(ERROR_IO_EXCEPTION, ioe);
+            throw new USNException(ERROR_IO_EXCEPTION, ioe);
+        }
+        catch (IllegalArgumentException ie)
+        {
+            LOG.error(ERROR_ILLEGAL_ARGUMENT, ie);
+            throw new USNException(ERROR_ILLEGAL_ARGUMENT, ie);
+        }
+        catch (USNException use)
+        {
+            LOG.error(ERROR_USN_EXCEPTION, use);
+            throw use;
+        }
+        finally
+        {
+            LOG.exitMethod();
         }
     }
 
-    static class SampleListener implements ServiceListener
+    public void browseStop(String endpointServiceType, Integer shardId, Integer groupId,
+        IServiceDiscoveryListener serviceDiscoveryListener) throws USNException
     {
-        @Override
-        public void serviceAdded(ServiceEvent event)
+        LOG.enterMethod(ARG_ENDPOINT_SERVICE_TYPE, endpointServiceType, ARG_ENDPOINT_SHARD_ID, shardId,
+            ARG_ENDPOINT_GROUP_ID, groupId, ARG_SERVICE_DISCOVERY_LISTENER, serviceDiscoveryListener);
+
+        try
         {
+            ArgsChecker.errorOnNull(endpointServiceType, ARG_ENDPOINT_SERVICE_TYPE);
+            ArgsChecker.errorOnNull(serviceDiscoveryListener, ARG_SERVICE_DISCOVERY_LISTENER);
+
+            doSanityCheck();
+
+            // Default browse shard id is -1.
+            if (shardId == null)
+            {
+                shardId = new Integer(DEFAULT_SHARD_ID);
+            }
+
+            // Default browse group id is -1.
+            if (groupId == null)
+            {
+                groupId = new Integer(DEFAULT_GROUP_ID);
+            }
+
+            if (removeBrowseEntry(endpointServiceType, shardId, groupId, serviceDiscoveryListener))
+            {
+                LOG.info(String.format(MSG_STOP_BROWSE, endpointServiceType, shardId, groupId));
+                try
+                {
+                    this.rwLockBrowseMap.readLock().lock();
+
+                    // Nobody browsing for this type anymore, unbrowse it on controller.
+                    if (!this.browseMap.containsKey(endpointServiceType))
+                    {
+                        this.sdController.removeServiceListener(
+                            constructServiceType(endpointServiceType, KEY_SERVICE_PROTOCOL_TCP,
+                                this.environmentManager.getEnvironmentId(), this.environmentManager.getDomain()), this);
+                    }
+                }
+                finally
+                {
+                    this.rwLockBrowseMap.readLock().unlock();
+                }
+            }
+        }
+        catch (IOException ioe)
+        {
+            LOG.error(ERROR_IO_EXCEPTION, ioe);
+            throw new USNException(ERROR_IO_EXCEPTION, ioe);
+        }
+        catch (IllegalArgumentException ie)
+        {
+            LOG.error(ERROR_ILLEGAL_ARGUMENT, ie);
+            throw new USNException(ERROR_ILLEGAL_ARGUMENT, ie);
+        }
+        catch (USNException use)
+        {
+            LOG.error(ERROR_USN_EXCEPTION, use);
+            throw use;
+        }
+        finally
+        {
+            LOG.exitMethod();
+        }
+    }
+
+    /**
+     * Remove listener from browse map. Clean map structure as well if needed.
+     * 
+     * @param serviceType
+     *            - a {@link String} application service type.
+     * @param shardId
+     *            - an {@link Integer} environment valid shard id.
+     * @param groupId
+     *            - an {@link Integer} valid group id.
+     * @param serviceDiscoveryListener
+     *            - an implementation of {@link IServiceDiscoveryListener} providing browse results callback.
+     * @return true if entry was removed or false otherwise.
+     */
+    private boolean removeBrowseEntry(String serviceType, Integer shardId, Integer groupId,
+        IServiceDiscoveryListener serviceDiscoveryListener)
+    {
+        try
+        {
+            this.rwLockBrowseMap.writeLock().lock();
+
+            if (!this.browseMap.containsKey(serviceType) || !this.browseMap.get(serviceType).containsKey(shardId)
+                || !this.browseMap.get(serviceType).get(shardId).containsKey(groupId)
+                || !this.browseMap.get(serviceType).get(shardId).get(groupId).contains(serviceDiscoveryListener))
+            {
+                return false;
+            }
+
+            // Remove listener and empty structure.
+            this.browseMap.get(serviceType).get(shardId).get(groupId).remove(serviceDiscoveryListener);
+
+            if (this.browseMap.get(serviceType).get(shardId).get(groupId).size() == 0)
+            {
+                this.browseMap.get(serviceType).get(shardId).remove(groupId);
+
+                if (this.browseMap.get(serviceType).get(shardId).size() == 0)
+                {
+                    this.browseMap.get(serviceType).remove(shardId);
+
+                    if (this.browseMap.get(serviceType).size() == 0)
+                    {
+                        this.browseMap.remove(serviceType);
+                    }
+                }
+            }
+            return true;
+        }
+        finally
+        {
+            this.rwLockBrowseMap.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Attempts to add a new browse entry to browse map.
+     * 
+     * @param serviceType
+     *            - a {@link String} application service type.
+     * @param shardId
+     *            - an {@link Integer} environment valid shard id.
+     * @param groupId
+     *            - an {@link Integer} valid group id.
+     * @param serviceDiscoveryListener
+     *            - an implementation of {@link IServiceDiscoveryListener} providing browse results callback.
+     * @return true if entry was added or false otherwise.
+     */
+    private boolean addBrowseEntry(String serviceType, Integer shardId, Integer groupId,
+        IServiceDiscoveryListener serviceDiscoveryListener)
+    {
+        try
+        {
+            // Assume the worst and pre create entire structure.
+            Set<IServiceDiscoveryListener> listenerSet = new HashSet<IServiceDiscoveryListener>();
+            HashMap<Integer, Set<IServiceDiscoveryListener>> groupToListenerSetMap = new HashMap<Integer, Set<IServiceDiscoveryListener>>();
+            Map<Integer, Map<Integer, Set<IServiceDiscoveryListener>>> shardToGroupMap = new HashMap<Integer, Map<Integer, Set<IServiceDiscoveryListener>>>();
+
+            this.rwLockBrowseMap.writeLock().lock();
+
+            if (!this.browseMap.containsKey(serviceType))
+            {
+                listenerSet.add(serviceDiscoveryListener);
+                groupToListenerSetMap.put(groupId, listenerSet);
+                shardToGroupMap.put(shardId, groupToListenerSetMap);
+
+                this.browseMap.put(serviceType, shardToGroupMap);
+                return true;
+            }
+            if (!this.browseMap.get(serviceType).containsKey(shardId))
+            {
+                listenerSet.add(serviceDiscoveryListener);
+                groupToListenerSetMap.put(groupId, listenerSet);
+
+                this.browseMap.get(serviceType).put(shardId, groupToListenerSetMap);
+                return true;
+            }
+
+            if (!this.browseMap.get(serviceType).get(shardId).containsKey(groupId))
+            {
+                listenerSet.add(serviceDiscoveryListener);
+
+                this.browseMap.get(serviceType).get(shardId).put(groupId, listenerSet);
+                return true;
+            }
+
+            if (!this.browseMap.get(serviceType).get(shardId).get(groupId).contains(serviceDiscoveryListener))
+            {
+                this.browseMap.get(serviceType).get(shardId).get(groupId).add(serviceDiscoveryListener);
+                return true;
+            }
+
+            return false;
+        }
+        finally
+        {
+            this.rwLockBrowseMap.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Helper method for constructing USN DNSSD valid full service type.
+     * 
+     * @param serviceType
+     *            - a {@link String} application service type.
+     * @param protocol
+     *            - a {@link String} application protocol.
+     * @param subDomain
+     *            - a {@link String} sub-domain.
+     * @param domain
+     *            - a {@link String} domain.
+     * @return - a {@link String} full service type in format: [_<serviceType>._<protocol>.<subDomain>.<domain>.]
+     */
+    private String constructServiceType(String serviceType, String protocol, String subDomain, String domain)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append(serviceType).append(KEY_DOT_DELIMETER);
+        sb.append(protocol).append(KEY_DOT_DELIMETER);
+        sb.append(subDomain).append(KEY_DOT_DELIMETER);
+        sb.append(domain).append(KEY_DOT_DELIMETER);
+
+        return sb.toString();
+    }
+
+    /**
+     * Notify listeners for provided service info.
+     * 
+     * @param serviceInfo
+     *            - a {@link ServiceInfo} resolved service data.
+     */
+    private void notifyListeners(ServiceInfo serviceInfo)
+    {
+        LOG.enterMethod();
+        try
+        {
+            this.rwLockBrowseMap.readLock().lock();
+
+            // Extract service data.
+            String serviceType = serviceInfo.getApplication();
+            serviceType = "_".concat(serviceType);
+            Integer shardId = Integer.valueOf(serviceInfo.getSubtype());
+            Integer groupId = Integer.valueOf(serviceInfo.getPropertyString(KEY_GROUP_ID));
+            String serviceId = serviceInfo.getPropertyString(KEY_SERVICE_ID);
+            String serviceName = serviceInfo.getName();
+            Inet4Address[] hostIPv4List = serviceInfo.getInet4Addresses();
+            int hostPort = serviceInfo.getPort();
+
+            // Create target listener set to notify. Includes listeners for all shard/group ids, and specific
+            // shard/group ids.
+            HashSet<IServiceDiscoveryListener> targetListenerSet = new HashSet<IServiceDiscoveryListener>();
+
+            // Check specific shard listeners (concrete shard id).
+            if (!this.browseMap.containsKey(serviceType) || !this.browseMap.get(serviceType).containsKey(shardId)
+                || !this.browseMap.get(serviceType).get(shardId).containsKey(groupId))
+            {
+                LOG.info(String.format(MSG_NO_LISTENERS, serviceType, shardId, groupId));
+            }
+            else
+            {
+                targetListenerSet.addAll(this.browseMap.get(serviceType).get(shardId).get(groupId));
+            }
+
+            // Check specific listeners (concrete shard id).
+            if (!this.browseMap.containsKey(serviceType)
+                || !this.browseMap.get(serviceType).containsKey(DEFAULT_SHARD_ID)
+                || !this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).containsKey(groupId))
+            {
+                LOG.info(String.format(MSG_NO_LISTENERS, serviceType, DEFAULT_SHARD_ID, groupId));
+            }
+            else
+            {
+                targetListenerSet.addAll(this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).get(groupId));
+            }
+
+            // Check general listeners (both shard id and group id 0).
+            if (!this.browseMap.containsKey(serviceType)
+                || !this.browseMap.get(serviceType).containsKey(DEFAULT_SHARD_ID)
+                || !this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).containsKey(DEFAULT_GROUP_ID))
+            {
+                LOG.info(String.format(MSG_NO_LISTENERS, serviceType, DEFAULT_SHARD_ID, DEFAULT_GROUP_ID));
+            }
+            else
+            {
+                targetListenerSet.addAll(this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).get(DEFAULT_GROUP_ID));
+            }
+
+            // Guard against listener errors.
             try
             {
-                System.out.println("Service added   : " + event.getName() + "." + event.getType());
-                JmDNS jmdns = JmDNS.create();
-                jmdns.requestServiceInfo("_admin._tcp.dev.game.", event.getName());
+                for (IServiceDiscoveryListener listener : targetListenerSet)
+                {
+                    listener.serviceResolved(hostIPv4List, hostPort, serviceName, shardId, groupId, serviceId);
+                }
             }
-            catch (Exception ioe)
+            catch (Exception e)
             {
-                System.err.println(ioe);
+                LOG.warn(WARN_LISTENER_EXCEPTION, e);
             }
-        }
 
-        @Override
-        public void serviceRemoved(ServiceEvent event)
-        {
-            System.out.println("Service removed : " + event.getName() + "." + event.getType());
         }
+        catch (NumberFormatException nfe)
+        {
+            LOG.error(ERROR_NFE, nfe);
+        }
+        finally
+        {
+            this.rwLockBrowseMap.readLock().unlock();
+            LOG.exitMethod();
+        }
+    }
 
-        @Override
-        public void serviceResolved(ServiceEvent event)
-        {
-            System.out.println("Service resolved: " + event.getInfo());
-        }
+    @Override
+    public void serviceAdded(ServiceEvent event)
+    {
+        LOG.trace(String.format(MSG_SERVICE_ADDED, event.getName(), event.getType()));
+        sdController.requestServiceInfo(event.getType(), event.getName());
+    }
+
+    @Override
+    public void serviceRemoved(ServiceEvent event)
+    {
+        LOG.trace(String.format(MSG_SERVICE_REMOVED, event.getName(), event.getType()));
+    }
+
+    @Override
+    public void serviceResolved(ServiceEvent event)
+    {
+        LOG.trace(String.format(MSG_SERVICE_RESOLVED, event.getInfo()));
+        notifyListeners(event.getInfo());
     }
 }
