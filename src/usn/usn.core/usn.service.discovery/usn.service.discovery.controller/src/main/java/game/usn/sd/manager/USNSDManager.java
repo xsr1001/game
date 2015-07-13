@@ -64,12 +64,12 @@ public final class USNSDManager implements ServiceListener
     private static final String MSG_SERVICE_ADDED = "Service: [%s --> %s] has been added.";
     private static final String MSG_SERVICE_REMOVED = "Service: [%s --> %s] has been removed.";
     private static final String MSG_SERVICE_RESOLVED = "Service: [%s] has been resolved. Notifying listeners.";
-    private static final String MSG_NO_LISTENERS = "No listeners present for service type: [%s], shard id: [%d], group id: [%d].";
 
     // Optional service map info keys and other service type keys.
     private static final String KEY_GROUP_ID = "gId";
     private static final String KEY_SERVICE_ID = "sId";
     private static final String KEY_SERVICE_PROTOCOL_TCP = "_tcp";
+    private static final String KEY_UNDERSCORE = "_";
     private static final String KEY_DOT_DELIMETER = ".";
 
     // Default group and shard id.
@@ -91,8 +91,12 @@ public final class USNSDManager implements ServiceListener
     // Browse map. Maps service type to shard id to group id to list of service listeners.
     private Map<String, Map<Integer, Map<Integer, Set<IServiceDiscoveryListener>>>> browseMap;
 
+    // Cached browse results map.
+    private Map<String, Set<ServiceInfo>> cachedBrowseResultMap;
+
     // Browse map synchronization.
     private ReentrantReadWriteLock rwLockBrowseMap;
+    private ReentrantReadWriteLock rwLockBrowseResultMap;
 
     /**
      * Singleton getter.
@@ -145,6 +149,9 @@ public final class USNSDManager implements ServiceListener
 
         this.browseMap = new HashMap<String, Map<Integer, Map<Integer, Set<IServiceDiscoveryListener>>>>();
         this.rwLockBrowseMap = new ReentrantReadWriteLock();
+
+        this.cachedBrowseResultMap = new HashMap<String, Set<ServiceInfo>>();
+        this.rwLockBrowseResultMap = new ReentrantReadWriteLock();
     }
 
     /**
@@ -296,6 +303,82 @@ public final class USNSDManager implements ServiceListener
 
             doSanityCheck();
 
+            String fullType = constructServiceType(endpointServiceType, KEY_SERVICE_PROTOCOL_TCP,
+                this.environmentManager.getEnvironmentId(), this.environmentManager.getDomain());
+
+            try
+            {
+                this.rwLockBrowseResultMap.writeLock().lock();
+                if (this.cachedBrowseResultMap.containsKey(fullType))
+                {
+                    if (shardId == null && groupId == null)
+                    {
+                        for (ServiceInfo info : this.cachedBrowseResultMap.get(fullType))
+                        {
+                            serviceDiscoveryListener.serviceResolved(info.getInet4Addresses(), info.getPort(),
+                                info.getName(), Integer.parseInt(info.getSubtype()),
+                                Integer.parseInt(info.getPropertyString(KEY_GROUP_ID)),
+                                info.getPropertyString(KEY_SERVICE_ID));
+                            return;
+                        }
+                    }
+
+                    if (shardId == null && groupId != null)
+                    {
+                        for (ServiceInfo info : this.cachedBrowseResultMap.get(fullType))
+                        {
+                            if (Integer.parseInt(info.getPropertyString(KEY_GROUP_ID)) == groupId)
+                            {
+                                serviceDiscoveryListener.serviceResolved(info.getInet4Addresses(), info.getPort(),
+                                    info.getName(), Integer.parseInt(info.getSubtype()),
+                                    Integer.parseInt(info.getPropertyString(KEY_GROUP_ID)),
+                                    info.getPropertyString(KEY_SERVICE_ID));
+                                return;
+                            }
+                        }
+                    }
+
+                    if (shardId != null && groupId == null)
+                    {
+                        for (ServiceInfo info : this.cachedBrowseResultMap.get(fullType))
+                        {
+                            if (Integer.parseInt(info.getSubtype()) == shardId)
+                            {
+                                serviceDiscoveryListener.serviceResolved(info.getInet4Addresses(), info.getPort(),
+                                    info.getName(), Integer.parseInt(info.getSubtype()),
+                                    Integer.parseInt(info.getPropertyString(KEY_GROUP_ID)),
+                                    info.getPropertyString(KEY_SERVICE_ID));
+                                return;
+                            }
+                        }
+                    }
+
+                    if (shardId != null && groupId != null)
+                    {
+                        for (ServiceInfo info : this.cachedBrowseResultMap.get(fullType))
+                        {
+                            if (Integer.parseInt(info.getSubtype()) == shardId
+                                && Integer.parseInt(info.getPropertyString(KEY_GROUP_ID)) == groupId)
+                            {
+                                serviceDiscoveryListener.serviceResolved(info.getInet4Addresses(), info.getPort(),
+                                    info.getName(), Integer.parseInt(info.getSubtype()),
+                                    Integer.parseInt(info.getPropertyString(KEY_GROUP_ID)),
+                                    info.getPropertyString(KEY_SERVICE_ID));
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                LOG.warn(WARN_LISTENER_EXCEPTION, e);
+            }
+            finally
+            {
+                this.rwLockBrowseResultMap.writeLock().unlock();
+            }
+
             // Default browse shard id is -1.
             if (shardId == null)
             {
@@ -342,6 +425,24 @@ public final class USNSDManager implements ServiceListener
         }
     }
 
+    /**
+     * Stop browsing for an USN end-point.
+     * 
+     * @param endpointServiceType
+     *            - an {@link String} environment valid end-point service type. This must be one of the types returned
+     *            from {@link IEnvironmentManager#getSDEndpointType(IUSNEndpoint)} call.
+     * 
+     * @param shardId
+     *            - an {@link Integer} environment valid shard id. Optional parameter to limit the search to set of
+     *            end-points determined by shard id.
+     * @param groupId
+     *            - an {@link Integer} valid group id. Optional parameter to limit the search to set of end-points
+     *            determined by group id.
+     * @param serviceDiscoveryListener
+     *            - an implementation of {@link IServiceDiscoveryListener} providing browse results callback.
+     * @throws USNException
+     *             - throw a {@link USNException} on browse error.
+     */
     public void browseStop(String endpointServiceType, Integer shardId, Integer groupId,
         IServiceDiscoveryListener serviceDiscoveryListener) throws USNException
     {
@@ -537,7 +638,7 @@ public final class USNSDManager implements ServiceListener
      *            - a {@link String} sub-domain.
      * @param domain
      *            - a {@link String} domain.
-     * @return - a {@link String} full service type in format: [_<serviceType>._<protocol>.<subDomain>.<domain>.]
+     * @return - a {@link String} full service type in format: [<serviceType>._<protocol>.<subDomain>.<domain>.]
      */
     private String constructServiceType(String serviceType, String protocol, String subDomain, String domain)
     {
@@ -564,8 +665,7 @@ public final class USNSDManager implements ServiceListener
             this.rwLockBrowseMap.readLock().lock();
 
             // Extract service data.
-            String serviceType = serviceInfo.getApplication();
-            serviceType = "_".concat(serviceType);
+            String serviceType = KEY_UNDERSCORE.concat(serviceInfo.getApplication());
             Integer shardId = Integer.valueOf(serviceInfo.getSubtype());
             Integer groupId = Integer.valueOf(serviceInfo.getPropertyString(KEY_GROUP_ID));
             String serviceId = serviceInfo.getPropertyString(KEY_SERVICE_ID);
@@ -573,43 +673,37 @@ public final class USNSDManager implements ServiceListener
             Inet4Address[] hostIPv4List = serviceInfo.getInet4Addresses();
             int hostPort = serviceInfo.getPort();
 
-            // Create target listener set to notify. Includes listeners for all shard/group ids, and specific
-            // shard/group ids.
+            // Create target listener set to notify.
             HashSet<IServiceDiscoveryListener> targetListenerSet = new HashSet<IServiceDiscoveryListener>();
 
-            // Check specific shard listeners (concrete shard id).
-            if (!this.browseMap.containsKey(serviceType) || !this.browseMap.get(serviceType).containsKey(shardId)
-                || !this.browseMap.get(serviceType).get(shardId).containsKey(groupId))
-            {
-                LOG.info(String.format(MSG_NO_LISTENERS, serviceType, shardId, groupId));
-            }
-            else
+            // Concrete shard id and group id.
+            if (this.browseMap.containsKey(serviceType) && this.browseMap.get(serviceType).containsKey(shardId)
+                && this.browseMap.get(serviceType).get(shardId).containsKey(groupId))
             {
                 targetListenerSet.addAll(this.browseMap.get(serviceType).get(shardId).get(groupId));
             }
 
-            // Check specific listeners (concrete shard id).
-            if (!this.browseMap.containsKey(serviceType)
-                || !this.browseMap.get(serviceType).containsKey(DEFAULT_SHARD_ID)
-                || !this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).containsKey(groupId))
+            // Concrete shard id and default group id.
+            if (this.browseMap.containsKey(serviceType) && this.browseMap.get(serviceType).containsKey(shardId)
+                && this.browseMap.get(serviceType).get(shardId).containsKey(DEFAULT_GROUP_ID))
             {
-                LOG.info(String.format(MSG_NO_LISTENERS, serviceType, DEFAULT_SHARD_ID, groupId));
-            }
-            else
-            {
-                targetListenerSet.addAll(this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).get(groupId));
+                targetListenerSet.addAll(this.browseMap.get(serviceType).get(shardId).get(DEFAULT_GROUP_ID));
             }
 
-            // Check general listeners (both shard id and group id 0).
-            if (!this.browseMap.containsKey(serviceType)
-                || !this.browseMap.get(serviceType).containsKey(DEFAULT_SHARD_ID)
-                || !this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).containsKey(DEFAULT_GROUP_ID))
-            {
-                LOG.info(String.format(MSG_NO_LISTENERS, serviceType, DEFAULT_SHARD_ID, DEFAULT_GROUP_ID));
-            }
-            else
+            // Default shard id and default group id.
+            if (this.browseMap.containsKey(serviceType)
+                && this.browseMap.get(serviceType).containsKey(DEFAULT_SHARD_ID)
+                && this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).containsKey(DEFAULT_GROUP_ID))
             {
                 targetListenerSet.addAll(this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).get(DEFAULT_GROUP_ID));
+            }
+
+            // Default shard id and concrete group id.
+            if (this.browseMap.containsKey(serviceType)
+                && this.browseMap.get(serviceType).containsKey(DEFAULT_SHARD_ID)
+                && this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).containsKey(groupId))
+            {
+                targetListenerSet.addAll(this.browseMap.get(serviceType).get(DEFAULT_SHARD_ID).get(groupId));
             }
 
             // Guard against listener errors.
@@ -648,12 +742,42 @@ public final class USNSDManager implements ServiceListener
     public void serviceRemoved(ServiceEvent event)
     {
         LOG.trace(String.format(MSG_SERVICE_REMOVED, event.getName(), event.getType()));
+
+        try
+        {
+            this.rwLockBrowseResultMap.writeLock().lock();
+            if (this.cachedBrowseResultMap.containsKey(event.getType()))
+            {
+                this.cachedBrowseResultMap.get(event.getType()).remove(event.getInfo());
+            }
+        }
+        finally
+        {
+            this.rwLockBrowseResultMap.writeLock().unlock();
+        }
     }
 
     @Override
     public void serviceResolved(ServiceEvent event)
     {
         LOG.trace(String.format(MSG_SERVICE_RESOLVED, event.getInfo()));
+
+        try
+        {
+            this.rwLockBrowseResultMap.writeLock().lock();
+            if (!this.cachedBrowseResultMap.containsKey(event.getType()))
+            {
+                Set<ServiceInfo> infoSet = new HashSet<ServiceInfo>();
+                this.cachedBrowseResultMap.put(event.getType(), infoSet);
+            }
+
+            this.cachedBrowseResultMap.get(event.getType()).add(event.getInfo());
+        }
+        finally
+        {
+            this.rwLockBrowseResultMap.writeLock().unlock();
+        }
+
         notifyListeners(event.getInfo());
     }
 }
