@@ -6,14 +6,17 @@
 package platform.dnssd.manager;
 
 import game.core.api.exception.PlatformException;
-import game.core.api.exception.USNException;
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -22,12 +25,14 @@ import javax.jmdns.ServiceInfo;
 
 import platform.dnssd.api.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
-import platform.dnssd.api.filter.ISDBrowseFilter;
+import platform.dnssd.api.filter.ISDResultFilter;
+import platform.dnssd.api.filter.ISDSingleResultFilter;
+import platform.dnssd.api.filter.SDEntityBrowseEntry;
 import platform.dnssd.api.listener.ISDListener;
 
 /**
- * Platform service discovery manager. Provides functionality for browsing and advertising entities via multi-cast DNS
- * on given platform instance.
+ * Platform service discovery manager. Provides functionality for browsing and advertising entities via multicast DNS on
+ * given platform instance.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -40,13 +45,17 @@ public final class PlatformSDManager
     // Errors, args, messages.
     private static final String ERROR_IO_EXCEPTION = "I/O error received while using JmDNS manager.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
+    private static final String ERROR_PLATFORM_MANAGER = "Invalid instance of service discovery platform manager.";
+    private static final String ERROR_PLATFORM_EXCEPTION = "Platform exception raised while checking for sanity.";
     private static final String ARG_ENTITY_NETWORK_PORT = "sdEntityNetworkPort";
     private static final String ARG_ENTITY_NAME = "sdEntityName";
     private static final String ARG_ENTITY = "sdEntity";
     private static final String ARG_ENTITY_CONTEXT = "sdEntityContext";
-    private static final String ARG_SD_CONTEXT_MANAGER = "platformSDContextManager";
     private static final String MSG_ADVERTISING = "Advertising new service discovery entity: [%s] on current platform.";
     private static final String MSG_ALREADY_ADVERTISING = "Service discovery entity with type: [%s] is already being advertised.";
+    private static final String ARG_BROWSE_LISTENER = "browseResultListener";
+    private static final String ARG_SERVICE_ENTITY_TYPE = "serviceEntityType";
+    private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
 
     // Service type keys.
     private static final String DEFAULT_PROTOCOL_TCP = "tcp";
@@ -67,58 +76,51 @@ public final class PlatformSDManager
 
     // Synchronization mechanisms.
     private ReentrantReadWriteLock advertiseRWLock;
+    private ReentrantReadWriteLock serviceCacheRWLock;
+    private ReentrantReadWriteLock browseRWLock;
 
     // Advertise map. Maps service discovery entity type to ServiceInfo.
     private Map<String, ServiceInfo> advertiseMap;
 
+    // Service cache map. Map service discovery entity type to list of service infos.
+    private Map<String, List<ServiceInfo>> serviceCacheMap;
+
+    // Browse listener map. Map service discovery entity type to set of listeners.
+    private Map<String, Set<ISDListener>> browseListenerMap;
+
+    // Listener filter map. Maps listener to service type to result filter.
+    private Map<ISDListener, Map<String, ISDResultFilter>> listenerFilterMap;
+
     /**
      * Singleton getter.
      * 
-     * @param platformSDContextManager
-     *            - implementation of {@link IPlatformSDContextManager} to provide platform specific context.
      * @return - the only instance of {@link USNSDManager}.
-     * @throws USNException
-     *             - throw a {@link PlatformException} on invalid {@link IPlatformSDContextManager} instance.
      */
-    public synchronized static PlatformSDManager getInstance(IPlatformSDContextManager platformSDContextManager)
-        throws PlatformException
+    public synchronized static PlatformSDManager getInstance()
     {
-        LOG.enterMethod(ARG_SD_CONTEXT_MANAGER, platformSDContextManager);
-        try
+        if (instance == null)
         {
-            if (instance != null)
-            {
-                return instance;
-            }
-            ArgsChecker.errorOnNull(platformSDContextManager, ARG_SD_CONTEXT_MANAGER);
-            instance = new PlatformSDManager(platformSDContextManager);
-
-            return instance;
+            instance = new PlatformSDManager();
         }
-        catch (IllegalArgumentException ie)
-        {
-            LOG.error(ERROR_ILLEGAL_ARGUMENT, ie);
-            throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, ie);
-        }
-        finally
-        {
-            LOG.exitMethod();
-        }
+        return instance;
     }
 
     /**
      * Private constructor.
      * 
-     * @param environmentManager
-     *            - implementation of {@link platformSDContextManager} to provide platform specific context.
      */
-    private PlatformSDManager(IPlatformSDContextManager platformSDContextManager)
+    private PlatformSDManager()
     {
         this.initialized = new AtomicBoolean(false);
-        this.platformSDContextManager = platformSDContextManager;
 
         this.advertiseMap = new HashMap<String, ServiceInfo>();
+        this.serviceCacheMap = new HashMap<String, List<ServiceInfo>>();
+        this.browseListenerMap = new HashMap<String, Set<ISDListener>>();
+        this.listenerFilterMap = new HashMap<ISDListener, Map<String, ISDResultFilter>>();
+
         this.advertiseRWLock = new ReentrantReadWriteLock();
+        this.serviceCacheRWLock = new ReentrantReadWriteLock();
+        this.browseRWLock = new ReentrantReadWriteLock();
     }
 
     /**
@@ -126,13 +128,21 @@ public final class PlatformSDManager
      * 
      * @throws IOException
      *             - throws {@link IOException} on {@link JmDNS} initialization error.
+     * @throws PlatformException
+     *             - throws {@link PlatformException} on invalid instance of {@link IPlatformSDContextManager}
+     *             implementation.
      */
-    private synchronized void doSanityCheck() throws IOException
+    private synchronized void doSanityCheck() throws IOException, PlatformException
     {
         LOG.enterMethod();
 
         if (!this.initialized.get())
         {
+            if (this.platformSDContextManager == null)
+            {
+                throw new PlatformException(ERROR_PLATFORM_MANAGER);
+            }
+
             this.jmDNSManager = JmDNS.create();
             this.initialized.set(true);
         }
@@ -140,7 +150,7 @@ public final class PlatformSDManager
     }
 
     /**
-     * Advertise new service discovery entity on platform.
+     * Advertise new service discovery entity on given platform instance.
      * 
      * @param sdEntity
      *            - a source {@link ISDEntity} to advertise.
@@ -149,7 +159,8 @@ public final class PlatformSDManager
      * @param sdEntityNetworkPort
      *            - a valid network port which sd entity is listening on.
      * @param sdEntityContext
-     *            - a {@link Map}<{@link String}, {@link String}> map providing custom sd entity context to advertise.
+     *            - a {@link Map}<{@link String},{@link String}> map providing custom sd entity context to advertise the
+     *            entity with.
      * @return true if service discovery entity has been successfully advertised or false otherwise.
      * @throws PlatformException
      *             - throw {@link PlatformException} on error.
@@ -208,6 +219,11 @@ public final class PlatformSDManager
             LOG.error(ERROR_IO_EXCEPTION, ioe);
             throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
         }
+        catch (PlatformException pe)
+        {
+            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
+            throw pe;
+        }
         finally
         {
             LOG.exitMethod();
@@ -258,20 +274,177 @@ public final class PlatformSDManager
             LOG.error(ERROR_IO_EXCEPTION, ioe);
             throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
         }
+        catch (PlatformException pe)
+        {
+            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
+            throw pe;
+        }
         finally
         {
             LOG.exitMethod();
         }
     }
 
-    public void browse(ISDListener browseResultListener, String sdEntityType, ISDBrowseFilter browseFilter)
+    public void browse(ISDListener browseResultListener, String serviceEntityType, ISDResultFilter browseResultFilter)
+        throws PlatformException
     {
+        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_SERVICE_ENTITY_TYPE, serviceEntityType,
+            ARG_BROWSE_RESULT_FILTER, browseResultFilter);
+        try
+        {
+            ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
+            ArgsChecker.errorOnNull(serviceEntityType, ARG_SERVICE_ENTITY_TYPE);
+            doSanityCheck();
 
+            // First check in cache.
+            List<ServiceInfo> resultServiceInfoList = null;
+            try
+            {
+                this.serviceCacheRWLock.readLock().lock();
+                resultServiceInfoList = this.serviceCacheMap.get(serviceEntityType);
+            }
+            finally
+            {
+                this.serviceCacheRWLock.readLock().unlock();
+            }
+
+            // Filter cached results.
+            if (resultServiceInfoList != null)
+            {
+                List<SDEntityBrowseEntry> sdEntityBrowseList = browseResultFilter.filter(toSDEntityBrowseEntryList(resultServiceInfoList));
+
+                if (sdEntityBrowseList != null)
+                {
+                    notifyListener(browseResultListener, sdEntityBrowseList);
+
+                    if (browseResultFilter instanceof ISDSingleResultFilter)
+                    {
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                if (!isBrowsing(serviceEntityType))
+                {
+                    // start browse.
+                }
+                addBrowseListener(browseResultListener, serviceEntityType, browseResultFilter);
+            }
+
+        }
+        catch (IllegalArgumentException iae)
+        {
+            LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
+            throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
+        }
+        catch (IOException ioe)
+        {
+            LOG.error(ERROR_IO_EXCEPTION, ioe);
+            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
+        }
+        catch (PlatformException pe)
+        {
+            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
+            throw pe;
+        }
+        finally
+        {
+            LOG.exitMethod();
+        }
     }
 
     public void browseStop(ISDListener browseResultListener)
     {
 
+    }
+
+    /**
+     * Check whether or not given sd entity is already being advertised.
+     * 
+     * @param sdEntity
+     *            - a source {@link ISDEntity}.
+     * @return true if given sd entity is already being advertised.
+     */
+    public boolean isAdvertised(ISDEntity sdEntity)
+    {
+        LOG.enterMethod(ARG_ENTITY, sdEntity);
+        try
+        {
+            this.advertiseRWLock.readLock().lock();
+            return this.advertiseMap.containsKey(sdEntity.getEntityServiceType());
+        }
+        finally
+        {
+            this.advertiseRWLock.readLock().unlock();
+            LOG.exitMethod();
+        }
+    }
+
+    public boolean isBrowsing(String serviceEntityType)
+    {
+        LOG.enterMethod(ARG_SERVICE_ENTITY_TYPE, serviceEntityType);
+        try
+        {
+            this.browseRWLock.readLock().lock();
+            return this.browseListenerMap.containsKey(serviceEntityType);
+        }
+        finally
+        {
+            this.browseRWLock.readLock().unlock();
+            LOG.exitMethod();
+        }
+    }
+
+    private void addBrowseListener(ISDListener browseResultListener, String serviceEntityType,
+        ISDResultFilter browseResultFilter)
+    {
+        try
+        {
+            this.browseRWLock.writeLock().lock();
+            if (!this.browseListenerMap.containsKey(serviceEntityType))
+            {
+                this.browseListenerMap.put(serviceEntityType, new HashSet<ISDListener>());
+            }
+            this.browseListenerMap.get(serviceEntityType).add(browseResultListener);
+
+            if (!this.listenerFilterMap.containsKey(browseResultListener))
+            {
+                this.listenerFilterMap.put(browseResultListener, new HashMap<String, ISDResultFilter>());
+            }
+            this.listenerFilterMap.get(browseResultListener).put(serviceEntityType, browseResultFilter);
+        }
+        finally
+        {
+            this.browseRWLock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Helper method for converting 3rd party {@link ServiceInfo} elements to internal {@link SDEntityBrowseEntry}
+     * elements.
+     * 
+     * @param serviceInfoList
+     *            - source {@link List} of {@link ServiceInfo} elements.
+     * @return - a {@link List} of {@link SDEntityBrowseEntry} elements.
+     */
+    private List<SDEntityBrowseEntry> toSDEntityBrowseEntryList(List<ServiceInfo> serviceInfoList)
+    {
+        List<SDEntityBrowseEntry> resultList = new ArrayList<SDEntityBrowseEntry>();
+
+        for (ServiceInfo serviceInfo : serviceInfoList)
+        {
+            Map<String, String> entityContextMap = new HashMap<String, String>();
+            while (serviceInfo.getPropertyNames().hasMoreElements())
+            {
+                String propertyName = serviceInfo.getPropertyNames().nextElement();
+                entityContextMap.put(propertyName, serviceInfo.getPropertyString(propertyName));
+            }
+
+            resultList.add(new SDEntityBrowseEntry(serviceInfo.getType(), serviceInfo.getName(), entityContextMap,
+                serviceInfo.getInet4Addresses()));
+        }
+        return resultList;
     }
 
     /**
@@ -296,28 +469,5 @@ public final class PlatformSDManager
         sb.append(domain).append(KEY_DOT_DELIMETER);
 
         return sb.toString();
-    }
-
-    /**
-     * Check whether or not given sd entity is already being advertised.
-     * 
-     * @param sdEntity
-     *            - a source {@link ISDEntity}.
-     * @return true if given sd entity is already being advertised.
-     */
-    public boolean isAdvertised(ISDEntity sdEntity)
-    {
-        LOG.enterMethod(ARG_ENTITY, sdEntity);
-
-        try
-        {
-            this.advertiseRWLock.readLock().lock();
-            return this.advertiseMap.containsKey(sdEntity.getEntityServiceType());
-        }
-        finally
-        {
-            this.advertiseRWLock.readLock().unlock();
-            LOG.exitMethod();
-        }
     }
 }
