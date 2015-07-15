@@ -9,5 +9,5 @@ import java.util.List;
 
 public interface ISDResultFilter
 {
-    List<SDEntityBrowseEntry> filter(List<SDEntityBrowseEntry> sdEntityBrowseEntryList);
+    List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList);
 }

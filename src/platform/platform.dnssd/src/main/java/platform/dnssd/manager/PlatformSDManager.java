@@ -12,6 +12,7 @@ import game.core.util.ArgsChecker;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,13 +22,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
+import javax.jmdns.ServiceListener;
 
 import platform.dnssd.api.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
 import platform.dnssd.api.filter.ISDResultFilter;
 import platform.dnssd.api.filter.ISDSingleResultFilter;
-import platform.dnssd.api.filter.SDEntityBrowseEntry;
+import platform.dnssd.api.filter.SDEntityBrowseResult;
 import platform.dnssd.api.listener.ISDListener;
 
 /**
@@ -37,7 +40,7 @@ import platform.dnssd.api.listener.ISDListener;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public final class PlatformSDManager
+public final class PlatformSDManager implements ServiceListener
 {
     // Logger.
     private static final Logger LOG = LoggerFactory.getLogger(PlatformSDManager.class);
@@ -47,6 +50,10 @@ public final class PlatformSDManager
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_PLATFORM_MANAGER = "Invalid instance of service discovery platform manager.";
     private static final String ERROR_PLATFORM_EXCEPTION = "Platform exception raised while checking for sanity.";
+    private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified.";
+    private static final String MSG_SERVICE_ADDED = "Service: [%s --> %s] has been added.";
+    private static final String MSG_SERVICE_REMOVED = "Service: [%s --> %s] has been removed.";
+    private static final String MSG_SERVICE_RESOLVED = "Service: [%s] has been resolved. Notifying listeners.";
     private static final String ARG_ENTITY_NETWORK_PORT = "sdEntityNetworkPort";
     private static final String ARG_ENTITY_NAME = "sdEntityName";
     private static final String ARG_ENTITY = "sdEntity";
@@ -54,7 +61,7 @@ public final class PlatformSDManager
     private static final String MSG_ADVERTISING = "Advertising new service discovery entity: [%s] on current platform.";
     private static final String MSG_ALREADY_ADVERTISING = "Service discovery entity with type: [%s] is already being advertised.";
     private static final String ARG_BROWSE_LISTENER = "browseResultListener";
-    private static final String ARG_SERVICE_ENTITY_TYPE = "serviceEntityType";
+    private static final String ARG_ENTITY_SERVICE_TYPE = "entityServiceType";
     private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
 
     // Service type keys.
@@ -285,53 +292,73 @@ public final class PlatformSDManager
         }
     }
 
-    public void browse(ISDListener browseResultListener, String serviceEntityType, ISDResultFilter browseResultFilter)
+    /**
+     * Browse for entity on given platform instance.
+     * 
+     * @param browseResultListener
+     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     * @param entityServiceType
+     *            - a {@link String} entity service type to browse for.
+     * @param browseResultFilter
+     *            - an implementation of {@link ISDResultFilter} to filter received results. Non mandatory. Caller
+     *            should provide necessary business logic for filtering results. If null, all results will be passed via
+     *            provided callback.
+     * @throws PlatformException
+     *             - throw {@link PlatformException} on browse error.
+     */
+    public void browse(ISDListener browseResultListener, String entityServiceType, ISDResultFilter browseResultFilter)
         throws PlatformException
     {
-        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_SERVICE_ENTITY_TYPE, serviceEntityType,
+        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_ENTITY_SERVICE_TYPE, entityServiceType,
             ARG_BROWSE_RESULT_FILTER, browseResultFilter);
         try
         {
             ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
-            ArgsChecker.errorOnNull(serviceEntityType, ARG_SERVICE_ENTITY_TYPE);
+            ArgsChecker.errorOnNull(entityServiceType, ARG_ENTITY_SERVICE_TYPE);
             doSanityCheck();
 
-            // First check in cache.
+            // Check if already browsing for this entity service type.
+            boolean isBrowsing = false;
+            try
+            {
+                this.browseRWLock.writeLock().lock();
+                isBrowsing = isBrowsing(entityServiceType);
+
+                // Add listener in any case. Required since we may already be browsing so we don't miss a result that
+                // may be received out of sync.
+                addBrowseListener(browseResultListener, entityServiceType, browseResultFilter);
+
+                // Start browsing if not already browsing.
+                if (!isBrowsing)
+                {
+                    this.jmDNSManager.addServiceListener(
+                        constructServiceType(entityServiceType, DEFAULT_PROTOCOL_TCP,
+                            this.platformSDContextManager.getPlatformId(), this.platformSDContextManager.getDomain()),
+                        this);
+                }
+            }
+            finally
+            {
+                this.browseRWLock.writeLock().unlock();
+            }
+
+            // Check cache for existing results.
             List<ServiceInfo> resultServiceInfoList = null;
             try
             {
                 this.serviceCacheRWLock.readLock().lock();
-                resultServiceInfoList = this.serviceCacheMap.get(serviceEntityType);
+                resultServiceInfoList = this.serviceCacheMap.get(entityServiceType);
             }
             finally
             {
                 this.serviceCacheRWLock.readLock().unlock();
             }
 
-            // Filter cached results.
+            // Notify with cache result.
             if (resultServiceInfoList != null)
             {
-                List<SDEntityBrowseEntry> sdEntityBrowseList = browseResultFilter.filter(toSDEntityBrowseEntryList(resultServiceInfoList));
-
-                if (sdEntityBrowseList != null)
-                {
-                    notifyListener(browseResultListener, sdEntityBrowseList);
-
-                    if (browseResultFilter instanceof ISDSingleResultFilter)
-                    {
-                        return;
-                    }
-                }
+                notifyListener(browseResultListener, entityServiceType, resultServiceInfoList);
             }
-            else
-            {
-                if (!isBrowsing(serviceEntityType))
-                {
-                    // start browse.
-                }
-                addBrowseListener(browseResultListener, serviceEntityType, browseResultFilter);
-            }
-
         }
         catch (IllegalArgumentException iae)
         {
@@ -354,97 +381,116 @@ public final class PlatformSDManager
         }
     }
 
-    public void browseStop(ISDListener browseResultListener)
+    /**
+     * Stop browsing for entity service.
+     * 
+     * @param browseResultListener
+     *            - a {@link ISDListener} that is browsing for a service.
+     * @param entityServiceType
+     *            - a {@link String} entity service type a listener is browsing for.
+     * @throws PlatformException
+     *             - throw {@link PlatformException} on browse stop error.
+     */
+    public void browseStop(ISDListener browseResultListener, String entityServiceType) throws PlatformException
     {
+        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_ENTITY_SERVICE_TYPE, entityServiceType);
+        try
+        {
+            ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
+            ArgsChecker.errorOnNull(entityServiceType, ARG_ENTITY_SERVICE_TYPE);
+            doSanityCheck();
 
+            try
+            {
+                this.browseRWLock.writeLock().lock();
+
+                removeBrowseListener(browseResultListener, entityServiceType);
+
+                if (!isBrowsing(entityServiceType))
+                {
+                    this.jmDNSManager.removeServiceListener(
+                        constructServiceType(entityServiceType, DEFAULT_PROTOCOL_TCP,
+                            this.platformSDContextManager.getPlatformId(), this.platformSDContextManager.getDomain()),
+                        this);
+                }
+            }
+            finally
+            {
+                this.browseRWLock.writeLock().unlock();
+            }
+        }
+        catch (IllegalArgumentException iae)
+        {
+            LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
+            throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
+        }
+        catch (IOException ioe)
+        {
+            LOG.error(ERROR_IO_EXCEPTION, ioe);
+            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
+        }
+        catch (PlatformException pe)
+        {
+            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
+            throw pe;
+        }
+        finally
+        {
+            LOG.exitMethod();
+        }
     }
 
     /**
-     * Check whether or not given sd entity is already being advertised.
+     * Add new browse result listener if not already present. This method should be called from a synchronized context.
      * 
-     * @param sdEntity
-     *            - a source {@link ISDEntity}.
-     * @return true if given sd entity is already being advertised.
+     * @param browseResultListener
+     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     * @param entityServiceType
+     *            - a {@link String} entity service type to browse for.
+     * @param browseResultFilter
+     *            - an implementation of {@link ISDResultFilter} to filter received results.
      */
-    public boolean isAdvertised(ISDEntity sdEntity)
-    {
-        LOG.enterMethod(ARG_ENTITY, sdEntity);
-        try
-        {
-            this.advertiseRWLock.readLock().lock();
-            return this.advertiseMap.containsKey(sdEntity.getEntityServiceType());
-        }
-        finally
-        {
-            this.advertiseRWLock.readLock().unlock();
-            LOG.exitMethod();
-        }
-    }
-
-    public boolean isBrowsing(String serviceEntityType)
-    {
-        LOG.enterMethod(ARG_SERVICE_ENTITY_TYPE, serviceEntityType);
-        try
-        {
-            this.browseRWLock.readLock().lock();
-            return this.browseListenerMap.containsKey(serviceEntityType);
-        }
-        finally
-        {
-            this.browseRWLock.readLock().unlock();
-            LOG.exitMethod();
-        }
-    }
-
-    private void addBrowseListener(ISDListener browseResultListener, String serviceEntityType,
+    private void addBrowseListener(ISDListener browseResultListener, String entityServiceType,
         ISDResultFilter browseResultFilter)
     {
-        try
+        // Create browse listener map structure if not already present.
+        if (!this.browseListenerMap.containsKey(entityServiceType))
         {
-            this.browseRWLock.writeLock().lock();
-            if (!this.browseListenerMap.containsKey(serviceEntityType))
-            {
-                this.browseListenerMap.put(serviceEntityType, new HashSet<ISDListener>());
-            }
-            this.browseListenerMap.get(serviceEntityType).add(browseResultListener);
+            this.browseListenerMap.put(entityServiceType, new HashSet<ISDListener>());
+        }
+        this.browseListenerMap.get(entityServiceType).add(browseResultListener);
 
+        if (browseResultFilter != null)
+        {
+            // Create browse filter map structure if not already present.
             if (!this.listenerFilterMap.containsKey(browseResultListener))
             {
                 this.listenerFilterMap.put(browseResultListener, new HashMap<String, ISDResultFilter>());
             }
-            this.listenerFilterMap.get(browseResultListener).put(serviceEntityType, browseResultFilter);
-        }
-        finally
-        {
-            this.browseRWLock.writeLock().unlock();
+
+            this.listenerFilterMap.get(browseResultListener).put(entityServiceType, browseResultFilter);
         }
     }
 
     /**
-     * Helper method for converting 3rd party {@link ServiceInfo} elements to internal {@link SDEntityBrowseEntry}
-     * elements.
+     * Remove a browse result listener if present. This method should be called from a synchronized context.
      * 
-     * @param serviceInfoList
-     *            - source {@link List} of {@link ServiceInfo} elements.
-     * @return - a {@link List} of {@link SDEntityBrowseEntry} elements.
+     * @param browseResultListener
+     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     * @param entityServiceType
+     *            - a {@link String} entity service type to browse for.
      */
-    private List<SDEntityBrowseEntry> toSDEntityBrowseEntryList(List<ServiceInfo> serviceInfoList)
+    private void removeBrowseListener(ISDListener browseResultListener, String entityServiceType)
     {
-        List<SDEntityBrowseEntry> resultList = new ArrayList<SDEntityBrowseEntry>();
-
-        for (ServiceInfo serviceInfo : serviceInfoList)
+        if (this.browseListenerMap.containsKey(entityServiceType))
         {
-            Map<String, String> entityContextMap = new HashMap<String, String>();
-            while (serviceInfo.getPropertyNames().hasMoreElements())
-            {
-                String propertyName = serviceInfo.getPropertyNames().nextElement();
-                entityContextMap.put(propertyName, serviceInfo.getPropertyString(propertyName));
-            }
-
-            resultList.add(new SDEntityBrowseEntry(serviceInfo.getType(), serviceInfo.getName(), entityContextMap,
-                serviceInfo.getInet4Addresses()));
+            this.browseListenerMap.get(entityServiceType).remove(browseResultListener);
         }
-        return resultList;
+
+        if (this.listenerFilterMap.containsKey(browseResultListener))
+        {
+            this.listenerFilterMap.get(browseResultListener).remove(entityServiceType);
+        }
     }
 
     /**
@@ -469,5 +515,199 @@ public final class PlatformSDManager
         sb.append(domain).append(KEY_DOT_DELIMETER);
 
         return sb.toString();
+    }
+
+    /**
+     * Helper method for detecting whether SD Manager is browsing for given entity service type. This method should be
+     * called from a synchronized context.
+     * 
+     * @param entityServiceType
+     *            - a {@link String} entity service type to check if browsing for.
+     * @return true if already browsing or false otherwise.
+     */
+    private boolean isBrowsing(String entityServiceType)
+    {
+        return this.browseListenerMap.containsKey(entityServiceType);
+    }
+
+    /**
+     * Check whether or not given sd entity is already being advertised.
+     * 
+     * @param sdEntity
+     *            - a source {@link ISDEntity}.
+     * @return true if given sd entity is already being advertised.
+     */
+    public boolean isAdvertised(ISDEntity sdEntity)
+    {
+        LOG.enterMethod(ARG_ENTITY, sdEntity);
+        try
+        {
+            this.advertiseRWLock.readLock().lock();
+            return this.advertiseMap.containsKey(sdEntity.getEntityServiceType());
+        }
+        finally
+        {
+            this.advertiseRWLock.readLock().unlock();
+            LOG.exitMethod();
+        }
+    }
+
+    /**
+     * Helper method for converting 3rd party {@link ServiceInfo} elements to internal {@link SDEntityBrowseResult}
+     * elements.
+     * 
+     * @param serviceInfoList
+     *            - source {@link List} of {@link ServiceInfo} elements.
+     * @return - a {@link List} of {@link SDEntityBrowseResult} elements.
+     */
+    private List<SDEntityBrowseResult> toSDEntityBrowseResultList(List<ServiceInfo> serviceInfoList)
+    {
+        List<SDEntityBrowseResult> resultList = new ArrayList<SDEntityBrowseResult>();
+
+        for (ServiceInfo serviceInfo : serviceInfoList)
+        {
+            Map<String, String> entityContextMap = new HashMap<String, String>();
+            while (serviceInfo.getPropertyNames().hasMoreElements())
+            {
+                String propertyName = serviceInfo.getPropertyNames().nextElement();
+                entityContextMap.put(propertyName, serviceInfo.getPropertyString(propertyName));
+            }
+
+            resultList.add(new SDEntityBrowseResult(serviceInfo.getType(), serviceInfo.getName(), entityContextMap,
+                serviceInfo.getInet4Addresses()));
+        }
+        return resultList;
+    }
+
+    @Override
+    public void serviceAdded(ServiceEvent event)
+    {
+        LOG.trace(String.format(MSG_SERVICE_ADDED, event.getName(), event.getType()));
+        this.jmDNSManager.requestServiceInfo(event.getType(), event.getName());
+    }
+
+    @Override
+    public void serviceRemoved(ServiceEvent event)
+    {
+        LOG.trace(String.format(MSG_SERVICE_REMOVED, event.getName(), event.getType()));
+
+        try
+        {
+            this.serviceCacheRWLock.writeLock().lock();
+            if (this.serviceCacheMap.containsKey(event.getInfo().getApplication()))
+            {
+                this.serviceCacheMap.get(event.getInfo().getApplication()).remove(event.getInfo());
+            }
+        }
+        finally
+        {
+            this.serviceCacheRWLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public void serviceResolved(ServiceEvent event)
+    {
+        LOG.trace(String.format(MSG_SERVICE_RESOLVED, event.getInfo()));
+
+        // Add to cache/
+        try
+        {
+            this.serviceCacheRWLock.writeLock().lock();
+            if (!this.serviceCacheMap.containsKey(event.getInfo().getApplication()))
+            {
+                List<ServiceInfo> infoSet = new ArrayList<ServiceInfo>();
+                this.serviceCacheMap.put(event.getInfo().getApplication(), infoSet);
+            }
+            this.serviceCacheMap.get(event.getInfo().getApplication()).add(event.getInfo());
+        }
+        finally
+        {
+            this.serviceCacheRWLock.writeLock().unlock();
+        }
+
+        // Notify listeners.
+        try
+        {
+            this.browseRWLock.readLock().lock();
+            if (!this.browseListenerMap.containsKey(event.getInfo().getApplication()))
+            {
+                for (ISDListener listener : this.browseListenerMap.get(event.getInfo().getApplication()))
+                {
+                    notifyListener(listener, event.getInfo().getApplication(),
+                        Arrays.asList(new ServiceInfo[] { event.getInfo() }));
+                }
+            }
+        }
+        finally
+        {
+            this.browseRWLock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Notify listener with received results. If filter is present results will be filtered first.
+     * 
+     * @param sdListener
+     *            - a {@link ISDListener} to notify.
+     * @param entityServiceType
+     *            - a {@link String} entity service type for which results were found.
+     * @param serviceInfoList
+     *            - a {@link List} of {@link ServiceInfo} results for entity service type that were discovered. This may
+     *            contain cached service entries or freshly discovered ones.
+     */
+    private void notifyListener(ISDListener sdListener, String entityServiceType, List<ServiceInfo> serviceInfoList)
+    {
+        // Check if we are still browsing (filter still exists).
+        ISDResultFilter resultFilter = null;
+        try
+        {
+            this.browseRWLock.readLock().lock();
+            if (this.listenerFilterMap.containsKey(sdListener))
+            {
+                resultFilter = this.listenerFilterMap.get(sdListener).get(entityServiceType);
+            }
+        }
+        finally
+        {
+            this.browseRWLock.readLock().unlock();
+        }
+
+        List<SDEntityBrowseResult> sdEntityBrowseList = null;
+        if (resultFilter != null)
+        {
+            sdEntityBrowseList = resultFilter.filter(toSDEntityBrowseResultList(serviceInfoList));
+        }
+        else
+        {
+            sdEntityBrowseList = toSDEntityBrowseResultList(serviceInfoList);
+        }
+        if (sdEntityBrowseList != null)
+        {
+            // Notify listener and guard from listener exceptions.
+            try
+            {
+                sdListener.serviceResolved(sdEntityBrowseList);
+            }
+            catch (Exception e)
+            {
+                LOG.warn(WARN_LISTENER_EXCEPTION, e);
+            }
+            finally
+            {
+                if (resultFilter instanceof ISDSingleResultFilter)
+                {
+                    try
+                    {
+                        this.browseRWLock.writeLock().lock();
+                        removeBrowseListener(sdListener, entityServiceType);
+                    }
+                    finally
+                    {
+                        this.browseRWLock.writeLock().unlock();
+                    }
+                }
+            }
+        }
     }
 }

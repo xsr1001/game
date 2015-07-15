@@ -746,9 +746,9 @@ public final class USNSDManager implements ServiceListener
         try
         {
             this.rwLockBrowseResultMap.writeLock().lock();
-            if (this.cachedBrowseResultMap.containsKey(event.getType()))
+            if (this.cachedBrowseResultMap.containsKey(event.getInfo().getApplication()))
             {
-                this.cachedBrowseResultMap.get(event.getType()).remove(event.getInfo());
+                this.cachedBrowseResultMap.get(event.getInfo().getApplication()).remove(event.getInfo());
             }
         }
         finally

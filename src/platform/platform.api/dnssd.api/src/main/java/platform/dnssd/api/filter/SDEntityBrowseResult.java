@@ -8,14 +8,14 @@ package platform.dnssd.api.filter;
 import java.net.Inet4Address;
 import java.util.Map;
 
-public class SDEntityBrowseEntry
+public class SDEntityBrowseResult
 {
     private String type;
     private String name;
     private Map<String, String> sdEntityContext;
     private Inet4Address[] inet4AddressArray;
 
-    public SDEntityBrowseEntry(String type, String name, Map<String, String> sdEntityContext,
+    public SDEntityBrowseResult(String type, String name, Map<String, String> sdEntityContext,
         Inet4Address[] inet4AddressArray)
     {
 
