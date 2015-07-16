@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" targetNamespace="http://platform/service/configuration/" xmlns:tns="http://platform/service/configuration/"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jaxb="http://java.sun.com/xml/ns/jaxb" jaxb:version="2.1"
+  elementFormDefault="unqualified">
+
+	<!-- ouptut package -->
+	<xs:annotation>
+		<xs:appinfo>
+			<jaxb:schemaBindings>
+				<jaxb:package name="platform.service.configuration.schema" />
+			</jaxb:schemaBindings>
+		</xs:appinfo>
+	</xs:annotation>
+
+	<xs:element name="serviceConfiguration" type="tns:t_service_configuration">
+		<xs:annotation>
+			<xs:appinfo>
+				<jaxb:class name="ServiceConfiguration" />
+			</xs:appinfo>
+			<xs:documentation>
+				Root element specifying the service configuration. It defines required platform configuration and provides a custom 
+				concrete service configuration (e.a. admin service configuration).
+			</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+
+	<xs:complexType name="t_service_configuration">
+		<xs:annotation>
+			<xs:appinfo>
+				<jaxb:class name="TServiceConfiguration" />
+			</xs:appinfo>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="platform" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Root element for platform configuration.
+					</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="SDContext" minOccurs="1" maxOccurs="1">
+							<xs:annotation>
+								<xs:documentation>
+									Platform DNS service discovery context configuration.
+								</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:attribute name="contextManagerClassBinding" use="required">
+									<xs:annotation>
+										<xs:documentation>
+											Class binding for context manager instance. Context manager is loaded at runtime and provides appropriate deployed service discovery context.
+											This enumeration is to be extended by future platform instances.
+										</xs:documentation>
+									</xs:annotation>
+									<xs:simpleType>
+										<xs:restriction base="xs:string">
+											<xs:enumeration value="platform.sd.context.manager.impl.DevSDContextManager" />
+											<xs:enumeration value="platform.sd.context.manager.impl.TestSDContextManager" />
+											<xs:enumeration value="platform.sd.context.manager.impl.ProdSDContextManager" />
+											<xs:enumeration value="platform.sd.context.manager.impl.BetaSDContextManager" />
+										</xs:restriction>
+									</xs:simpleType>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="domain" minOccurs="1" maxOccurs="1">
+							<xs:annotation>
+								<xs:documentation>
+									Top level DNS domain.
+								</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:attribute name="value" type="xs:string" use="required">
+									<xs:annotation>
+										<xs:documentation>
+											Top level DNS domain value.
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="service" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Root element for service configuration.
+					</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<!-- place holder for concrete service configuration.-->
+						<xs:element ref="tns:configuration" minOccurs="1" maxOccurs="1" />
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:element name="configuration" type="tns:t_configurationBase">
+		<xs:annotation>
+			<xs:appinfo>
+				<jaxb:class name="Configuration" />
+			</xs:appinfo>
+			<xs:documentation>
+				This element is a place holder for specific service configuration.
+			</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+
+	<!-- common service configuration that all concrete service implementations must include. -->
+	<xs:complexType name="t_configurationBase">
+		<xs:annotation>
+			<xs:appinfo>
+				<jaxb:class name="TConfigurationBase" />
+			</xs:appinfo>
+		</xs:annotation>
+	</xs:complexType>
+</xs:schema>

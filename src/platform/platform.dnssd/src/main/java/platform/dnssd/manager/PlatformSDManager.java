@@ -415,6 +415,7 @@ public final class PlatformSDManager implements ServiceListener
                 }
             }
             finally
+
             {
                 this.browseRWLock.writeLock().unlock();
             }

@@ -9,6 +9,7 @@
   <modules>
   	<module>platform.dnssd</module>
   	<module>platform.api</module>
+  	<module>platform.service.core</module>
   </modules>
   <dependencyManagement>
   	<dependencies>
