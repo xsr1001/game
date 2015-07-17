@@ -8,7 +8,7 @@
   <xs:annotation>
     <xs:appinfo>
       <jaxb:schemaBindings>
-        <jaxb:package name="game.service.admin.configuration.schema" />
+        <jaxb:package name="platform.admin.service.configuration.schema" />
       </jaxb:schemaBindings>
     </xs:appinfo>
   </xs:annotation>
@@ -40,7 +40,7 @@
   </xs:complexType>
 
   <!-- concrete reference of t_adminServiceConfiguration  type -->
-  <xs:element name="adminServiceConfiguration " type="tns:t_adminServiceConfiguration " substitutionGroup="bs:configuration">
+  <xs:element name="adminServiceConfiguration" type="tns:t_adminServiceConfiguration" substitutionGroup="bs:configuration">
     <xs:annotation>
       <xs:appinfo>
         <jaxb:class name="AdminServiceConfiguration100" />
