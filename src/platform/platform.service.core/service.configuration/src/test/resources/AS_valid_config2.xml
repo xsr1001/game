@@ -1,0 +1,13 @@
+<ns1:serviceConfiguration 
+  xmlns:ns1="http://platform/service/configuration/"
+  xmlns:ns2="http://admin/service/configuration/v2.0.0/">
+  <platform>
+    <SDContext contextManagerClassBinding="platform.sd.context.manager.impl.DevSDContextManager" />
+    <domain value="local" />
+  </platform>
+  <service>
+    <ns2:adminServiceConfiguration>
+    	<admin_service_specific_element admin_type="test_type" />
+    </ns2:adminServiceConfiguration>
+  </service>
+</ns1:serviceConfiguration>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" targetNamespace="http://admin/service/configuration/v2.0.0/"
+           xmlns:tns="http://admin/service/configuration/v2.0.0/"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:bs="http://platform/service/configuration/"
+           xmlns:jaxb="http://java.sun.com/xml/ns/jaxb" jaxb:version="2.1" elementFormDefault="unqualified">
+  <xs:import namespace="http://platform/service/configuration/" schemaLocation="service_configuration.xsd" />
+
+  <xs:annotation>
+    <xs:appinfo>
+      <jaxb:schemaBindings>
+        <jaxb:package name="platform.admin.service.extended.configuration.schema" />
+      </jaxb:schemaBindings>
+    </xs:appinfo>
+  </xs:annotation>
+
+  <!-- t_adminServiceConfigurationBase type -->
+  <xs:complexType name="t_adminServiceConfigurationBase">
+    <xs:annotation>
+      <xs:appinfo>
+        <jaxb:class name="TAdminServiceConfigurationBase100" />
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:restriction base="bs:t_configurationBase">
+      </xs:restriction>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- t_adminServiceConfiguration defines additional parameters that are required by the base schema -->
+  <xs:complexType name="t_adminServiceConfiguration">
+    <xs:annotation>
+      <xs:appinfo>
+        <jaxb:class name="TAdminServiceConfiguration100" />
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="tns:t_adminServiceConfigurationBase">
+      	<xs:sequence>
+          <xs:element name="admin_service_specific_element" minOccurs="1" maxOccurs="1">
+            <xs:complexType>
+              <xs:attribute name="admin_type" type="xs:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- concrete reference of t_adminServiceConfiguration  type -->
+  <xs:element name="adminServiceConfiguration" type="tns:t_adminServiceConfiguration" substitutionGroup="bs:configuration">
+    <xs:annotation>
+      <xs:appinfo>
+        <jaxb:class name="AdminServiceConfiguration100" />
+      </xs:appinfo>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

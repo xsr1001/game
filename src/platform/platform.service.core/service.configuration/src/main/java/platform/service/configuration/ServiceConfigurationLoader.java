@@ -18,9 +18,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
@@ -37,7 +39,7 @@ import platform.service.configuration.schema.ServiceConfiguration;
 import platform.service.configuration.schema.TServiceConfiguration;
 
 /**
- * Configuration loader. Load required service configuration file.
+ * Configuration loader. Load custom service configuration file.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -59,17 +61,22 @@ public final class ServiceConfigurationLoader
     // Service configuration singleton instance.
     private static ServiceConfigurationLoader instance;
 
-    // External service configuration key.
+    // External service configuration key. Deployment mechanism should provide this JVM argument to the executable to
+    // load configuration.
     private static final String EXTERNAL_SERVICE_CONFIGURATION = "service.configuration";
 
-    // Schema catalogue.
+    // Schema catalogue. Executable should provide schema catalogue on the class path to parse custo service
+    // configuration schema.
     private static final String SCHEMA_CATALOGUE = "/schema.catalogue";
-
-    // Read schema list.
-    private List<String> schemaList;
 
     // JAXB unmarshaller.
     private Unmarshaller jaxbUnmarshaller;
+
+    // Cache loaded configuration files.
+    private Map<String, ServiceConfiguration> configurationCacheMap;
+
+    // Synchronize cache access.
+    private ReentrantReadWriteLock configurationCacheRWLock;
 
     /**
      * Return singleton instance of {@link ServiceConfigurationLoader}.
@@ -97,17 +104,21 @@ public final class ServiceConfigurationLoader
     {
         LOG.enterMethod();
 
-        this.schemaList = new LinkedList<String>();
+        this.configurationCacheMap = new HashMap<String, ServiceConfiguration>();
+        this.configurationCacheRWLock = new ReentrantReadWriteLock();
 
-        parseSchemaCatalogue();
+        // Parse schema catalogue to provide unmarshaller with valid custom service configuration schemas. Custom
+        // service configuration schema should be present
+        // on class path.
+        List<String> schemaList = parseSchemaCatalogue();
 
         try
         {
             JAXBContext jaxbContext = JAXBContext.newInstance(TServiceConfiguration.class);
             this.jaxbUnmarshaller = jaxbContext.createUnmarshaller();
 
-            List<Source> schemaSourceList = new ArrayList<Source>();
-            for (String schema : this.schemaList)
+            List<Source> schemaSourceList = new LinkedList<Source>();
+            for (String schema : schemaList)
             {
                 schemaSourceList.add(new StreamSource(ServiceConfigurationLoader.class.getResourceAsStream(schema)));
             }
@@ -158,11 +169,25 @@ public final class ServiceConfigurationLoader
     {
         LOG.enterMethod(ARG_CONFIGURATION_FILE, configurationFile);
 
+        try
+        {
+            this.configurationCacheRWLock.readLock().lock();
+            if (this.configurationCacheMap.containsKey(configurationFile))
+            {
+                return this.configurationCacheMap.get(configurationFile);
+            }
+        }
+        finally
+        {
+            this.configurationCacheRWLock.readLock().unlock();
+        }
+
         InputStream inStream = null;
         try
         {
             ArgsChecker.errorOnNull(configurationFile, ARG_CONFIGURATION_FILE);
 
+            // First try load it as an external file or load as an internal resource.
             File configFile = new File(configurationFile);
             if (configFile.exists())
             {
@@ -172,7 +197,19 @@ public final class ServiceConfigurationLoader
             {
                 inStream = ServiceConfigurationLoader.class.getResourceAsStream(configurationFile);
             }
-            return ServiceConfiguration.class.cast(jaxbUnmarshaller.unmarshal(inStream));
+
+            ServiceConfiguration configuration = ServiceConfiguration.class.cast(jaxbUnmarshaller.unmarshal(inStream));
+            try
+            {
+                this.configurationCacheRWLock.writeLock().lock();
+                this.configurationCacheMap.put(configurationFile, configuration);
+            }
+            finally
+            {
+                this.configurationCacheRWLock.writeLock().unlock();
+            }
+
+            return configuration;
         }
         catch (IllegalArgumentException iae)
         {
@@ -202,17 +239,20 @@ public final class ServiceConfigurationLoader
                     LOG.error(ERROR_STREAM_CLOSE, ioe);
                 }
             }
+            LOG.exitMethod();
         }
     }
 
     /**
      * Parse schema catalogue to provide schema definitions for possible configuration files.
      * 
+     * @return a {@link List} of {@link String} custom configuration schema files.
      * @throws ConfigurationException
      *             - throw {@link ConfigurationException} on schema catalogue parsing error.
      */
-    private void parseSchemaCatalogue() throws ConfigurationException
+    private List<String> parseSchemaCatalogue() throws ConfigurationException
     {
+        List<String> schemaList = new LinkedList<String>();
         BufferedReader in = null;
         try
         {
@@ -222,7 +262,7 @@ public final class ServiceConfigurationLoader
 
             while ((line = in.readLine()) != null)
             {
-                this.schemaList.add(line);
+                schemaList.add(line);
             }
         }
         catch (IOException ioe)
@@ -245,9 +285,10 @@ public final class ServiceConfigurationLoader
             }
         }
 
-        if (this.schemaList.isEmpty())
+        if (schemaList.isEmpty())
         {
             throw new ConfigurationException(ERROR_SCHEMA_CATALOGUE);
         }
+        return schemaList;
     }
 }
