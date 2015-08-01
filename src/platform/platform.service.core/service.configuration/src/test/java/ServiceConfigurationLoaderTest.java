@@ -3,7 +3,6 @@
  * @brief Test configuration loader functionality.
  */
 
-package platform.admin.service.configuration;
 
 import junit.framework.Assert;
 

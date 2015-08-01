@@ -2,13 +2,13 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>game</groupId>
-    <artifactId>platform.core</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <artifactId>platform</artifactId>
+    <version>0.0.3-SNAPSHOT</version>
   </parent>
-  <artifactId>core</artifactId>
-  <name>game-core</name>
-  <description>Core functionality for game projects.</description>
-  <dependencies>
+  <artifactId>platform.core</artifactId>
+  <name>game-platform-core</name>
+  <description>Core functionality for platform.</description>
+   <dependencies>
   	<dependency>
   		<groupId>ch.qos.logback</groupId>
   		<artifactId>logback-core</artifactId>

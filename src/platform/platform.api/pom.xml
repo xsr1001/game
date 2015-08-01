@@ -11,5 +11,7 @@
   <description>Platform APIs for game project.</description>
   <modules>
   	<module>dnssd.api</module>
+  	<module>core.api</module>
+  	<module>bridge.api</module>
   </modules>
 </project>

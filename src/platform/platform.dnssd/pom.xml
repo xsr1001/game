@@ -19,11 +19,11 @@
   	</dependency>
   	<dependency>
   		<groupId>game</groupId>
-  		<artifactId>core</artifactId>
+  		<artifactId>core.api</artifactId>
   	</dependency>
   	<dependency>
   		<groupId>game</groupId>
-  		<artifactId>core.api</artifactId>
+  		<artifactId>platform.core</artifactId>
   	</dependency>
   </dependencies>
 </project>

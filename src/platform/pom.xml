@@ -10,6 +10,7 @@
   	<module>platform.dnssd</module>
   	<module>platform.api</module>
   	<module>platform.service.core</module>
+  	<module>platform.core</module>
   </modules>
   <dependencyManagement>
   	<dependencies>
@@ -30,13 +31,13 @@
   		</dependency>
   		<dependency>
   			<groupId>game</groupId>
-  			<artifactId>core</artifactId>
-  			<version>0.0.2-SNAPSHOT</version>
+  			<artifactId>platform.core</artifactId>
+  			<version>0.0.3-SNAPSHOT</version>
   		</dependency>
   		<dependency>
   			<groupId>game</groupId>
   			<artifactId>core.api</artifactId>
-  			<version>0.0.2-SNAPSHOT</version>
+  			<version>0.0.3-SNAPSHOT</version>
   		</dependency>
   	</dependencies>
   </dependencyManagement>

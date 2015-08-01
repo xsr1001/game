@@ -2,10 +2,10 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>game</groupId>
-    <artifactId>platform.core</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <artifactId>platform.api</artifactId>
+    <version>0.0.3-SNAPSHOT</version>
   </parent>
   <artifactId>core.api</artifactId>
   <name>game-core-api</name>
-  <description>Core APIs foer game project.</description>
+  <description>Core APIs for game project.</description>
 </project>
