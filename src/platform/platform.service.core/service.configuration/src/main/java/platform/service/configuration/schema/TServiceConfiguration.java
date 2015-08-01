@@ -5,9 +5,9 @@
 // Generated on: 2015.08.01 at 12:10:17 PM CEST 
 //
 
-
 package platform.service.configuration.schema;
 
+import javax.xml.bind.JAXBElement;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -15,11 +15,12 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElementRef;
 import javax.xml.bind.annotation.XmlType;
 
-
 /**
- * <p>Java class for t_service_configuration complex type.
+ * <p>
+ * Java class for t_service_configuration complex type.
  * 
- * <p>The following schema fragment specifies the expected content contained within this class.
+ * <p>
+ * The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType name="t_service_configuration">
@@ -83,11 +84,9 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "t_service_configuration", propOrder = {
-    "platform",
-    "service"
-})
-public class TServiceConfiguration {
+@XmlType(name = "t_service_configuration", propOrder = { "platform", "service" })
+public class TServiceConfiguration
+{
 
     @XmlElement(required = true)
     protected TServiceConfiguration.Platform platform;
@@ -97,12 +96,11 @@ public class TServiceConfiguration {
     /**
      * Gets the value of the platform property.
      * 
-     * @return
-     *     possible object is
-     *     {@link TServiceConfiguration.Platform }
-     *     
+     * @return possible object is {@link TServiceConfiguration.Platform }
+     * 
      */
-    public TServiceConfiguration.Platform getPlatform() {
+    public TServiceConfiguration.Platform getPlatform()
+    {
         return platform;
     }
 
@@ -110,23 +108,22 @@ public class TServiceConfiguration {
      * Sets the value of the platform property.
      * 
      * @param value
-     *     allowed object is
-     *     {@link TServiceConfiguration.Platform }
-     *     
+     *            allowed object is {@link TServiceConfiguration.Platform }
+     * 
      */
-    public void setPlatform(TServiceConfiguration.Platform value) {
+    public void setPlatform(TServiceConfiguration.Platform value)
+    {
         this.platform = value;
     }
 
     /**
      * Gets the value of the service property.
      * 
-     * @return
-     *     possible object is
-     *     {@link TServiceConfiguration.Service }
-     *     
+     * @return possible object is {@link TServiceConfiguration.Service }
+     * 
      */
-    public TServiceConfiguration.Service getService() {
+    public TServiceConfiguration.Service getService()
+    {
         return service;
     }
 
@@ -134,19 +131,20 @@ public class TServiceConfiguration {
      * Sets the value of the service property.
      * 
      * @param value
-     *     allowed object is
-     *     {@link TServiceConfiguration.Service }
-     *     
+     *            allowed object is {@link TServiceConfiguration.Service }
+     * 
      */
-    public void setService(TServiceConfiguration.Service value) {
+    public void setService(TServiceConfiguration.Service value)
+    {
         this.service = value;
     }
 
-
     /**
-     * <p>Java class for anonymous complex type.
+     * <p>
+     * Java class for anonymous complex type.
      * 
-     * <p>The following schema fragment specifies the expected content contained within this class.
+     * <p>
+     * The following schema fragment specifies the expected content contained within this class.
      * 
      * <pre>
      * &lt;complexType>
@@ -189,11 +187,9 @@ public class TServiceConfiguration {
      * 
      */
     @XmlAccessorType(XmlAccessType.FIELD)
-    @XmlType(name = "", propOrder = {
-        "sdContext",
-        "domain"
-    })
-    public static class Platform {
+    @XmlType(name = "", propOrder = { "sdContext", "domain" })
+    public static class Platform
+    {
 
         @XmlElement(name = "SDContext", required = true)
         protected TServiceConfiguration.Platform.SDContext sdContext;
@@ -203,12 +199,11 @@ public class TServiceConfiguration {
         /**
          * Gets the value of the sdContext property.
          * 
-         * @return
-         *     possible object is
-         *     {@link TServiceConfiguration.Platform.SDContext }
-         *     
+         * @return possible object is {@link TServiceConfiguration.Platform.SDContext }
+         * 
          */
-        public TServiceConfiguration.Platform.SDContext getSDContext() {
+        public TServiceConfiguration.Platform.SDContext getSDContext()
+        {
             return sdContext;
         }
 
@@ -216,23 +211,22 @@ public class TServiceConfiguration {
          * Sets the value of the sdContext property.
          * 
          * @param value
-         *     allowed object is
-         *     {@link TServiceConfiguration.Platform.SDContext }
-         *     
+         *            allowed object is {@link TServiceConfiguration.Platform.SDContext }
+         * 
          */
-        public void setSDContext(TServiceConfiguration.Platform.SDContext value) {
+        public void setSDContext(TServiceConfiguration.Platform.SDContext value)
+        {
             this.sdContext = value;
         }
 
         /**
          * Gets the value of the domain property.
          * 
-         * @return
-         *     possible object is
-         *     {@link TServiceConfiguration.Platform.Domain }
-         *     
+         * @return possible object is {@link TServiceConfiguration.Platform.Domain }
+         * 
          */
-        public TServiceConfiguration.Platform.Domain getDomain() {
+        public TServiceConfiguration.Platform.Domain getDomain()
+        {
             return domain;
         }
 
@@ -240,19 +234,20 @@ public class TServiceConfiguration {
          * Sets the value of the domain property.
          * 
          * @param value
-         *     allowed object is
-         *     {@link TServiceConfiguration.Platform.Domain }
-         *     
+         *            allowed object is {@link TServiceConfiguration.Platform.Domain }
+         * 
          */
-        public void setDomain(TServiceConfiguration.Platform.Domain value) {
+        public void setDomain(TServiceConfiguration.Platform.Domain value)
+        {
             this.domain = value;
         }
 
-
         /**
-         * <p>Java class for anonymous complex type.
+         * <p>
+         * Java class for anonymous complex type.
          * 
-         * <p>The following schema fragment specifies the expected content contained within this class.
+         * <p>
+         * The following schema fragment specifies the expected content contained within this class.
          * 
          * <pre>
          * &lt;complexType>
@@ -268,7 +263,8 @@ public class TServiceConfiguration {
          */
         @XmlAccessorType(XmlAccessType.FIELD)
         @XmlType(name = "")
-        public static class Domain {
+        public static class Domain
+        {
 
             @XmlAttribute(name = "value", required = true)
             protected String value;
@@ -276,12 +272,11 @@ public class TServiceConfiguration {
             /**
              * Gets the value of the value property.
              * 
-             * @return
-             *     possible object is
-             *     {@link String }
-             *     
+             * @return possible object is {@link String }
+             * 
              */
-            public String getValue() {
+            public String getValue()
+            {
                 return value;
             }
 
@@ -289,21 +284,22 @@ public class TServiceConfiguration {
              * Sets the value of the value property.
              * 
              * @param value
-             *     allowed object is
-             *     {@link String }
-             *     
+             *            allowed object is {@link String }
+             * 
              */
-            public void setValue(String value) {
+            public void setValue(String value)
+            {
                 this.value = value;
             }
 
         }
 
-
         /**
-         * <p>Java class for anonymous complex type.
+         * <p>
+         * Java class for anonymous complex type.
          * 
-         * <p>The following schema fragment specifies the expected content contained within this class.
+         * <p>
+         * The following schema fragment specifies the expected content contained within this class.
          * 
          * <pre>
          * &lt;complexType>
@@ -328,7 +324,8 @@ public class TServiceConfiguration {
          */
         @XmlAccessorType(XmlAccessType.FIELD)
         @XmlType(name = "")
-        public static class SDContext {
+        public static class SDContext
+        {
 
             @XmlAttribute(name = "contextManagerClassBinding", required = true)
             protected String contextManagerClassBinding;
@@ -336,12 +333,11 @@ public class TServiceConfiguration {
             /**
              * Gets the value of the contextManagerClassBinding property.
              * 
-             * @return
-             *     possible object is
-             *     {@link String }
-             *     
+             * @return possible object is {@link String }
+             * 
              */
-            public String getContextManagerClassBinding() {
+            public String getContextManagerClassBinding()
+            {
                 return contextManagerClassBinding;
             }
 
@@ -349,11 +345,11 @@ public class TServiceConfiguration {
              * Sets the value of the contextManagerClassBinding property.
              * 
              * @param value
-             *     allowed object is
-             *     {@link String }
-             *     
+             *            allowed object is {@link String }
+             * 
              */
-            public void setContextManagerClassBinding(String value) {
+            public void setContextManagerClassBinding(String value)
+            {
                 this.contextManagerClassBinding = value;
             }
 
@@ -361,11 +357,12 @@ public class TServiceConfiguration {
 
     }
 
-
     /**
-     * <p>Java class for anonymous complex type.
+     * <p>
+     * Java class for anonymous complex type.
      * 
-     * <p>The following schema fragment specifies the expected content contained within this class.
+     * <p>
+     * The following schema fragment specifies the expected content contained within this class.
      * 
      * <pre>
      * &lt;complexType>
@@ -382,23 +379,21 @@ public class TServiceConfiguration {
      * 
      */
     @XmlAccessorType(XmlAccessType.FIELD)
-    @XmlType(name = "", propOrder = {
-        "configuration"
-    })
-    public static class Service {
+    @XmlType(name = "", propOrder = { "configuration" })
+    public static class Service
+    {
 
         @XmlElementRef(name = "configuration", namespace = "http://platform/service/configuration/", type = Configuration.class)
-        protected Configuration configuration;
+        protected JAXBElement<? extends TConfigurationBase> configuration;
 
         /**
          * Gets the value of the configuration property.
          * 
-         * @return
-         *     possible object is
-         *     {@link Configuration }
-         *     
+         * @return possible object is {@link Configuration }
+         * 
          */
-        public Configuration getConfiguration() {
+        public JAXBElement<? extends TConfigurationBase> getConfiguration()
+        {
             return configuration;
         }
 
@@ -406,11 +401,11 @@ public class TServiceConfiguration {
          * Sets the value of the configuration property.
          * 
          * @param value
-         *     allowed object is
-         *     {@link Configuration }
-         *     
+         *            allowed object is {@link Configuration }
+         * 
          */
-        public void setConfiguration(Configuration value) {
+        public void setConfiguration(JAXBElement<? extends TConfigurationBase> value)
+        {
             this.configuration = value;
         }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<xs:schema version="1.0" targetNamespace="http://admin/service/configuration/v1.0.0/"
-           xmlns:tns="http://admin/service/configuration/v1.0.0/"
+<xs:schema version="1.0" targetNamespace="http://admin/service/configuration/v2.0.0/"
+           xmlns:tns="http://admin/service/configuration/v2.0.0/"
            xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:bs="http://platform/service/configuration/"
            xmlns:jaxb="http://java.sun.com/xml/ns/jaxb" jaxb:version="2.1" elementFormDefault="unqualified">
   <xs:import namespace="http://platform/service/configuration/" schemaLocation="service_configuration.xsd" />
@@ -8,7 +8,7 @@
   <xs:annotation>
     <xs:appinfo>
       <jaxb:schemaBindings>
-        <jaxb:package name="platform.admin.service.configuration.schema" />
+        <jaxb:package name="platform.service_two.configuration.schema" />
       </jaxb:schemaBindings>
     </xs:appinfo>
   </xs:annotation>
@@ -35,6 +35,13 @@
     </xs:annotation>
     <xs:complexContent>
       <xs:extension base="tns:t_adminServiceConfigurationBase">
+      	<xs:sequence>
+          <xs:element name="admin_service_specific_element" minOccurs="1" maxOccurs="1">
+            <xs:complexType>
+              <xs:attribute name="admin_type" type="xs:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

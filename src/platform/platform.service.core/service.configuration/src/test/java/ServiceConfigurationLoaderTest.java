@@ -3,14 +3,13 @@
  * @brief Test configuration loader functionality.
  */
 
-
 import junit.framework.Assert;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import platform.service.configuration.ServiceConfigurationLoader;
 import platform.service.configuration.schema.ServiceConfiguration;
+import platform.service_two.configuration.schema.AdminServiceConfiguration100;
 
 /**
  * Test configuration loader functionality.
@@ -20,28 +19,17 @@ import platform.service.configuration.schema.ServiceConfiguration;
  */
 public class ServiceConfigurationLoaderTest
 {
-    // Exception field for test assertion.
-    private Exception ex;
-
     /**
-     * Reset field before each test.
-     */
-    @Before
-    public void before()
-    {
-        ex = null;
-    }
-
-    /**
-     * Test basic raw configuration load without custom service configuration.
+     * Test raw configuration load without custom service configuration - no additional custom elements.
      */
     @Test
     public void testValidConfigurationLoadBare()
     {
+        Exception ex = null;
         try
         {
             ServiceConfiguration config = ServiceConfigurationLoader.getInstance().loadConfiguration(
-                "/AS_valid_config1.xml");
+                "/service1_configuration_valid.xml", true);
 
             Assert.assertNotNull(config);
             Assert.assertEquals("platform.sd.context.manager.impl.DevSDContextManager",
@@ -61,14 +49,21 @@ public class ServiceConfigurationLoaderTest
     @Test
     public void testValidConfigurationLoadExtended()
     {
+        Exception ex = null;
         try
         {
             ServiceConfiguration config = ServiceConfigurationLoader.getInstance().loadConfiguration(
-                "/AS_valid_config2.xml");
+                "/service2_configuration_valid.xml", true);
 
             Assert.assertNotNull(config);
             Assert.assertEquals("platform.sd.context.manager.impl.DevSDContextManager",
                 config.getValue().getPlatform().getSDContext().getContextManagerClassBinding());
+
+            Assert.assertTrue(config.getValue().getService().getConfiguration() instanceof AdminServiceConfiguration100);
+            AdminServiceConfiguration100 specificConfiguration = (AdminServiceConfiguration100) config.getValue().getService().getConfiguration();
+            Assert.assertNotNull(specificConfiguration);
+            Assert.assertEquals("test_type",
+                specificConfiguration.getValue().getAdminServiceSpecificElement().getAdminType());
         }
         catch (Exception e)
         {

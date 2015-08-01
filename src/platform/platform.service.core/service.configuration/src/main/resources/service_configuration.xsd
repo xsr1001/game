@@ -3,7 +3,7 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jaxb="http://java.sun.com/xml/ns/jaxb" jaxb:version="2.1"
   elementFormDefault="unqualified">
 
-	<!-- ouptut package -->
+	<!-- output package -->
 	<xs:annotation>
 		<xs:appinfo>
 			<jaxb:schemaBindings>
@@ -98,7 +98,6 @@
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
-
 	<xs:element name="configuration" type="tns:t_configurationBase">
 		<xs:annotation>
 			<xs:appinfo>
