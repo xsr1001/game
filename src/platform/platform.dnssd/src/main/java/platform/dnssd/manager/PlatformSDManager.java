@@ -48,8 +48,7 @@ public final class PlatformSDManager implements ServiceListener
     // Errors, args, messages.
     private static final String ERROR_IO_EXCEPTION = "I/O error received while using JmDNS manager.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
-    private static final String ERROR_PLATFORM_MANAGER = "Invalid instance of service discovery platform manager.";
-    private static final String ERROR_PLATFORM_EXCEPTION = "Platform exception raised while checking for sanity.";
+    private static final String ERROR_INITIALIZED = "Sevice discovery manager has not been initialized yet.";
     private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified.";
     private static final String MSG_SERVICE_ADDED = "Service: [%s --> %s] has been added.";
     private static final String MSG_SERVICE_REMOVED = "Service: [%s --> %s] has been removed.";
@@ -63,17 +62,18 @@ public final class PlatformSDManager implements ServiceListener
     private static final String ARG_BROWSE_LISTENER = "browseResultListener";
     private static final String ARG_ENTITY_SERVICE_TYPE = "entityServiceType";
     private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
+    private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
+
+    // Singleton instance.
+    private static final PlatformSDManager INSTANCE = new PlatformSDManager();
+
+    // Determines if PlatformSDManager is initialized.
+    private AtomicBoolean initialized;
 
     // Service type keys.
     private static final String DEFAULT_PROTOCOL_TCP = "tcp";
     private static final String KEY_UNDERSCORE = "_";
     private static final String KEY_DOT_DELIMETER = ".";
-
-    // Singleton instance.
-    private static PlatformSDManager instance;
-
-    // Determines if PlatformSDManager is initialized.
-    private AtomicBoolean initialized;
 
     // Platform service discovery context manager.
     private IPlatformSDContextManager platformSDContextManager;
@@ -101,15 +101,11 @@ public final class PlatformSDManager implements ServiceListener
     /**
      * Singleton getter.
      * 
-     * @return - the only instance of {@link USNSDManager}.
+     * @return - return singleton instance of {@link USNSDManager}.
      */
     public synchronized static PlatformSDManager getInstance()
     {
-        if (instance == null)
-        {
-            instance = new PlatformSDManager();
-        }
-        return instance;
+        return INSTANCE;
     }
 
     /**
@@ -118,42 +114,55 @@ public final class PlatformSDManager implements ServiceListener
      */
     private PlatformSDManager()
     {
-        this.initialized = new AtomicBoolean(false);
+        initialized = new AtomicBoolean(false);
 
-        this.advertiseMap = new HashMap<String, ServiceInfo>();
-        this.serviceCacheMap = new HashMap<String, List<ServiceInfo>>();
-        this.browseListenerMap = new HashMap<String, Set<ISDListener>>();
-        this.listenerFilterMap = new HashMap<ISDListener, Map<String, ISDResultFilter>>();
+        advertiseMap = new HashMap<String, ServiceInfo>();
+        serviceCacheMap = new HashMap<String, List<ServiceInfo>>();
+        browseListenerMap = new HashMap<String, Set<ISDListener>>();
+        listenerFilterMap = new HashMap<ISDListener, Map<String, ISDResultFilter>>();
 
-        this.advertiseRWLock = new ReentrantReadWriteLock();
-        this.serviceCacheRWLock = new ReentrantReadWriteLock();
-        this.browseRWLock = new ReentrantReadWriteLock();
+        advertiseRWLock = new ReentrantReadWriteLock();
+        serviceCacheRWLock = new ReentrantReadWriteLock();
+        browseRWLock = new ReentrantReadWriteLock();
     }
 
     /**
-     * Performs self initialization and additional setup checks.
+     * Initialize platform SD manager with SD context manager.
      * 
-     * @throws IOException
-     *             - throws {@link IOException} on {@link JmDNS} initialization error.
+     * @param platformSDContextManager
+     *            - an instance of {@link IPlatformSDContextManager} defining context for service discovery.
      * @throws PlatformException
-     *             - throws {@link PlatformException} on invalid instance of {@link IPlatformSDContextManager}
-     *             implementation.
+     *             - throw {@link PlatformException} on error.
      */
-    private synchronized void doSanityCheck() throws IOException, PlatformException
+    public synchronized void init(IPlatformSDContextManager platformSDContextManager) throws PlatformException
     {
         LOG.enterMethod();
-
-        if (!this.initialized.get())
+        try
         {
-            if (this.platformSDContextManager == null)
+            ArgsChecker.errorOnNull(platformSDContextManager, ARG_PLATFORM_CONTEXT_MANAGER);
+            if (!initialized.get())
             {
-                throw new PlatformException(ERROR_PLATFORM_MANAGER);
-            }
+                this.platformSDContextManager = platformSDContextManager;
 
-            this.jmDNSManager = JmDNS.create();
-            this.initialized.set(true);
+                jmDNSManager = JmDNS.create();
+                initialized.set(true);
+            }
         }
-        LOG.exitMethod();
+        catch (IllegalArgumentException iae)
+        {
+            LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
+            throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
+        }
+        catch (IOException ioe)
+        {
+            LOG.error(ERROR_IO_EXCEPTION, ioe);
+            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
+        }
+        finally
+        {
+            LOG.exitMethod();
+        }
+
     }
 
     /**
@@ -177,11 +186,16 @@ public final class PlatformSDManager implements ServiceListener
     {
         LOG.enterMethod(ARG_ENTITY, sdEntity, ARG_ENTITY_NAME, sdEntityName, ARG_ENTITY_NETWORK_PORT,
             sdEntityNetworkPort, ARG_ENTITY_CONTEXT, sdEntityContext);
+
+        if (!initialized.get())
+        {
+            throw new PlatformException(ERROR_INITIALIZED);
+        }
+
         try
         {
             ArgsChecker.errorOnNull(sdEntity, ARG_ENTITY);
             ArgsChecker.errorOnNull(sdEntityName, ARG_ENTITY_NAME);
-            doSanityCheck();
 
             if (isAdvertised(sdEntity))
             {
@@ -198,20 +212,20 @@ public final class PlatformSDManager implements ServiceListener
             // Create service info and register.
             ServiceInfo serviceInfo = ServiceInfo.create(
                 constructServiceType(sdEntity.getEntityServiceType(), DEFAULT_PROTOCOL_TCP,
-                    this.platformSDContextManager.getPlatformId(), this.platformSDContextManager.getDomain()),
-                sdEntityName, sdEntityNetworkPort, 0, 0, true, propertyMap);
+                    platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), sdEntityName,
+                sdEntityNetworkPort, 0, 0, true, propertyMap);
 
             LOG.info(String.format(MSG_ADVERTISING, serviceInfo.toString()));
-            this.jmDNSManager.registerService(serviceInfo);
+            jmDNSManager.registerService(serviceInfo);
 
             try
             {
-                this.advertiseRWLock.writeLock().lock();
-                this.advertiseMap.put(sdEntity.getEntityServiceType(), serviceInfo);
+                advertiseRWLock.writeLock().lock();
+                advertiseMap.put(sdEntity.getEntityServiceType(), serviceInfo);
             }
             finally
             {
-                this.advertiseRWLock.writeLock().unlock();
+                advertiseRWLock.writeLock().unlock();
             }
 
             return true;
@@ -225,11 +239,6 @@ public final class PlatformSDManager implements ServiceListener
         {
             LOG.error(ERROR_IO_EXCEPTION, ioe);
             throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
-        }
-        catch (PlatformException pe)
-        {
-            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
-            throw pe;
         }
         finally
         {
@@ -248,43 +257,38 @@ public final class PlatformSDManager implements ServiceListener
     public synchronized void advertiseStop(ISDEntity sdEntity) throws PlatformException
     {
         LOG.enterMethod(ARG_ENTITY, sdEntity);
+
+        if (!initialized.get())
+        {
+            throw new PlatformException(ERROR_INITIALIZED);
+        }
+
         try
         {
             ArgsChecker.errorOnNull(sdEntity, ARG_ENTITY);
-            doSanityCheck();
 
             if (!isAdvertised(sdEntity))
             {
                 return;
             }
 
-            ServiceInfo serviceInfo = this.advertiseMap.get(sdEntity.getEntityServiceType());
-            this.jmDNSManager.unregisterService(serviceInfo);
+            ServiceInfo serviceInfo = advertiseMap.get(sdEntity.getEntityServiceType());
+            jmDNSManager.unregisterService(serviceInfo);
 
             try
             {
-                this.advertiseRWLock.writeLock().lock();
-                this.advertiseMap.remove(sdEntity.getEntityServiceType());
+                advertiseRWLock.writeLock().lock();
+                advertiseMap.remove(sdEntity.getEntityServiceType());
             }
             finally
             {
-                this.advertiseRWLock.writeLock().unlock();
+                advertiseRWLock.writeLock().unlock();
             }
         }
         catch (IllegalArgumentException iae)
         {
             LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
             throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
-        }
-        catch (IOException ioe)
-        {
-            LOG.error(ERROR_IO_EXCEPTION, ioe);
-            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
-        }
-        catch (PlatformException pe)
-        {
-            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
-            throw pe;
         }
         finally
         {
@@ -311,17 +315,21 @@ public final class PlatformSDManager implements ServiceListener
     {
         LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_ENTITY_SERVICE_TYPE, entityServiceType,
             ARG_BROWSE_RESULT_FILTER, browseResultFilter);
+
+        if (!initialized.get())
+        {
+            throw new PlatformException(ERROR_INITIALIZED);
+        }
         try
         {
             ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
             ArgsChecker.errorOnNull(entityServiceType, ARG_ENTITY_SERVICE_TYPE);
-            doSanityCheck();
 
             // Check if already browsing for this entity service type.
             boolean isBrowsing = false;
             try
             {
-                this.browseRWLock.writeLock().lock();
+                browseRWLock.writeLock().lock();
                 isBrowsing = isBrowsing(entityServiceType);
 
                 // Add listener in any case. Required since we may already be browsing so we don't miss a result that
@@ -331,27 +339,26 @@ public final class PlatformSDManager implements ServiceListener
                 // Start browsing if not already browsing.
                 if (!isBrowsing)
                 {
-                    this.jmDNSManager.addServiceListener(
+                    jmDNSManager.addServiceListener(
                         constructServiceType(entityServiceType, DEFAULT_PROTOCOL_TCP,
-                            this.platformSDContextManager.getPlatformId(), this.platformSDContextManager.getDomain()),
-                        this);
+                            platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
                 }
             }
             finally
             {
-                this.browseRWLock.writeLock().unlock();
+                browseRWLock.writeLock().unlock();
             }
 
             // Check cache for existing results.
             List<ServiceInfo> resultServiceInfoList = null;
             try
             {
-                this.serviceCacheRWLock.readLock().lock();
-                resultServiceInfoList = this.serviceCacheMap.get(entityServiceType);
+                serviceCacheRWLock.readLock().lock();
+                resultServiceInfoList = serviceCacheMap.get(entityServiceType);
             }
             finally
             {
-                this.serviceCacheRWLock.readLock().unlock();
+                serviceCacheRWLock.readLock().unlock();
             }
 
             // Notify with cache result.
@@ -364,16 +371,6 @@ public final class PlatformSDManager implements ServiceListener
         {
             LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
             throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
-        }
-        catch (IOException ioe)
-        {
-            LOG.error(ERROR_IO_EXCEPTION, ioe);
-            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
-        }
-        catch (PlatformException pe)
-        {
-            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
-            throw pe;
         }
         finally
         {
@@ -394,46 +391,39 @@ public final class PlatformSDManager implements ServiceListener
     public void browseStop(ISDListener browseResultListener, String entityServiceType) throws PlatformException
     {
         LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_ENTITY_SERVICE_TYPE, entityServiceType);
+
+        if (!initialized.get())
+        {
+            throw new PlatformException(ERROR_INITIALIZED);
+        }
+
         try
         {
             ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
             ArgsChecker.errorOnNull(entityServiceType, ARG_ENTITY_SERVICE_TYPE);
-            doSanityCheck();
 
             try
             {
-                this.browseRWLock.writeLock().lock();
+                browseRWLock.writeLock().lock();
 
                 removeBrowseListener(browseResultListener, entityServiceType);
 
                 if (!isBrowsing(entityServiceType))
                 {
-                    this.jmDNSManager.removeServiceListener(
+                    jmDNSManager.removeServiceListener(
                         constructServiceType(entityServiceType, DEFAULT_PROTOCOL_TCP,
-                            this.platformSDContextManager.getPlatformId(), this.platformSDContextManager.getDomain()),
-                        this);
+                            platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
                 }
             }
             finally
-
             {
-                this.browseRWLock.writeLock().unlock();
+                browseRWLock.writeLock().unlock();
             }
         }
         catch (IllegalArgumentException iae)
         {
             LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
             throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
-        }
-        catch (IOException ioe)
-        {
-            LOG.error(ERROR_IO_EXCEPTION, ioe);
-            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
-        }
-        catch (PlatformException pe)
-        {
-            LOG.error(ERROR_PLATFORM_EXCEPTION, pe);
-            throw pe;
         }
         finally
         {
@@ -455,21 +445,20 @@ public final class PlatformSDManager implements ServiceListener
         ISDResultFilter browseResultFilter)
     {
         // Create browse listener map structure if not already present.
-        if (!this.browseListenerMap.containsKey(entityServiceType))
+        if (!browseListenerMap.containsKey(entityServiceType))
         {
-            this.browseListenerMap.put(entityServiceType, new HashSet<ISDListener>());
+            browseListenerMap.put(entityServiceType, new HashSet<ISDListener>());
         }
-        this.browseListenerMap.get(entityServiceType).add(browseResultListener);
+        browseListenerMap.get(entityServiceType).add(browseResultListener);
 
         if (browseResultFilter != null)
         {
             // Create browse filter map structure if not already present.
-            if (!this.listenerFilterMap.containsKey(browseResultListener))
+            if (!listenerFilterMap.containsKey(browseResultListener))
             {
-                this.listenerFilterMap.put(browseResultListener, new HashMap<String, ISDResultFilter>());
+                listenerFilterMap.put(browseResultListener, new HashMap<String, ISDResultFilter>());
             }
-
-            this.listenerFilterMap.get(browseResultListener).put(entityServiceType, browseResultFilter);
+            listenerFilterMap.get(browseResultListener).put(entityServiceType, browseResultFilter);
         }
     }
 
@@ -483,14 +472,14 @@ public final class PlatformSDManager implements ServiceListener
      */
     private void removeBrowseListener(ISDListener browseResultListener, String entityServiceType)
     {
-        if (this.browseListenerMap.containsKey(entityServiceType))
+        if (browseListenerMap.containsKey(entityServiceType))
         {
-            this.browseListenerMap.get(entityServiceType).remove(browseResultListener);
+            browseListenerMap.get(entityServiceType).remove(browseResultListener);
         }
 
-        if (this.listenerFilterMap.containsKey(browseResultListener))
+        if (listenerFilterMap.containsKey(browseResultListener))
         {
-            this.listenerFilterMap.get(browseResultListener).remove(entityServiceType);
+            listenerFilterMap.get(browseResultListener).remove(entityServiceType);
         }
     }
 
@@ -528,7 +517,7 @@ public final class PlatformSDManager implements ServiceListener
      */
     private boolean isBrowsing(String entityServiceType)
     {
-        return this.browseListenerMap.containsKey(entityServiceType);
+        return browseListenerMap.containsKey(entityServiceType);
     }
 
     /**
@@ -543,12 +532,12 @@ public final class PlatformSDManager implements ServiceListener
         LOG.enterMethod(ARG_ENTITY, sdEntity);
         try
         {
-            this.advertiseRWLock.readLock().lock();
-            return this.advertiseMap.containsKey(sdEntity.getEntityServiceType());
+            advertiseRWLock.readLock().lock();
+            return advertiseMap.containsKey(sdEntity.getEntityServiceType());
         }
         finally
         {
-            this.advertiseRWLock.readLock().unlock();
+            advertiseRWLock.readLock().unlock();
             LOG.exitMethod();
         }
     }
@@ -584,7 +573,7 @@ public final class PlatformSDManager implements ServiceListener
     public void serviceAdded(ServiceEvent event)
     {
         LOG.trace(String.format(MSG_SERVICE_ADDED, event.getName(), event.getType()));
-        this.jmDNSManager.requestServiceInfo(event.getType(), event.getName());
+        jmDNSManager.requestServiceInfo(event.getType(), event.getName());
     }
 
     @Override
@@ -594,15 +583,15 @@ public final class PlatformSDManager implements ServiceListener
 
         try
         {
-            this.serviceCacheRWLock.writeLock().lock();
-            if (this.serviceCacheMap.containsKey(event.getInfo().getApplication()))
+            serviceCacheRWLock.writeLock().lock();
+            if (serviceCacheMap.containsKey(event.getInfo().getApplication()))
             {
-                this.serviceCacheMap.get(event.getInfo().getApplication()).remove(event.getInfo());
+                serviceCacheMap.get(event.getInfo().getApplication()).remove(event.getInfo());
             }
         }
         finally
         {
-            this.serviceCacheRWLock.writeLock().unlock();
+            serviceCacheRWLock.writeLock().unlock();
         }
     }
 
@@ -614,26 +603,26 @@ public final class PlatformSDManager implements ServiceListener
         // Add to cache/
         try
         {
-            this.serviceCacheRWLock.writeLock().lock();
-            if (!this.serviceCacheMap.containsKey(event.getInfo().getApplication()))
+            serviceCacheRWLock.writeLock().lock();
+            if (!serviceCacheMap.containsKey(event.getInfo().getApplication()))
             {
                 List<ServiceInfo> infoSet = new ArrayList<ServiceInfo>();
-                this.serviceCacheMap.put(event.getInfo().getApplication(), infoSet);
+                serviceCacheMap.put(event.getInfo().getApplication(), infoSet);
             }
-            this.serviceCacheMap.get(event.getInfo().getApplication()).add(event.getInfo());
+            serviceCacheMap.get(event.getInfo().getApplication()).add(event.getInfo());
         }
         finally
         {
-            this.serviceCacheRWLock.writeLock().unlock();
+            serviceCacheRWLock.writeLock().unlock();
         }
 
         // Notify listeners.
         try
         {
-            this.browseRWLock.readLock().lock();
-            if (!this.browseListenerMap.containsKey(event.getInfo().getApplication()))
+            browseRWLock.readLock().lock();
+            if (!browseListenerMap.containsKey(event.getInfo().getApplication()))
             {
-                for (ISDListener listener : this.browseListenerMap.get(event.getInfo().getApplication()))
+                for (ISDListener listener : browseListenerMap.get(event.getInfo().getApplication()))
                 {
                     notifyListener(listener, event.getInfo().getApplication(),
                         Arrays.asList(new ServiceInfo[] { event.getInfo() }));
@@ -642,7 +631,7 @@ public final class PlatformSDManager implements ServiceListener
         }
         finally
         {
-            this.browseRWLock.writeLock().unlock();
+            browseRWLock.writeLock().unlock();
         }
     }
 
@@ -663,15 +652,15 @@ public final class PlatformSDManager implements ServiceListener
         ISDResultFilter resultFilter = null;
         try
         {
-            this.browseRWLock.readLock().lock();
-            if (this.listenerFilterMap.containsKey(sdListener))
+            browseRWLock.readLock().lock();
+            if (listenerFilterMap.containsKey(sdListener))
             {
-                resultFilter = this.listenerFilterMap.get(sdListener).get(entityServiceType);
+                resultFilter = listenerFilterMap.get(sdListener).get(entityServiceType);
             }
         }
         finally
         {
-            this.browseRWLock.readLock().unlock();
+            browseRWLock.readLock().unlock();
         }
 
         List<SDEntityBrowseResult> sdEntityBrowseList = null;
@@ -700,12 +689,12 @@ public final class PlatformSDManager implements ServiceListener
                 {
                     try
                     {
-                        this.browseRWLock.writeLock().lock();
+                        browseRWLock.writeLock().lock();
                         removeBrowseListener(sdListener, entityServiceType);
                     }
                     finally
                     {
-                        this.browseRWLock.writeLock().unlock();
+                        browseRWLock.writeLock().unlock();
                     }
                 }
             }
