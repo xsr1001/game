@@ -162,7 +162,6 @@ public final class PlatformSDManager implements ServiceListener
         {
             LOG.exitMethod();
         }
-
     }
 
     /**
@@ -340,7 +339,7 @@ public final class PlatformSDManager implements ServiceListener
                 if (!isBrowsing)
                 {
                     jmDNSManager.addServiceListener(
-                        constructServiceType(entityServiceType, DEFAULT_PROTOCOL_TCP,
+                        constructServiceType(normalizeServiceType(entityServiceType), DEFAULT_PROTOCOL_TCP,
                             platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
                 }
             }
@@ -411,7 +410,7 @@ public final class PlatformSDManager implements ServiceListener
                 if (!isBrowsing(entityServiceType))
                 {
                     jmDNSManager.removeServiceListener(
-                        constructServiceType(entityServiceType, DEFAULT_PROTOCOL_TCP,
+                        constructServiceType(normalizeServiceType(entityServiceType), DEFAULT_PROTOCOL_TCP,
                             platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
                 }
             }
@@ -515,7 +514,7 @@ public final class PlatformSDManager implements ServiceListener
      *            - a {@link String} entity service type to check if browsing for.
      * @return true if already browsing or false otherwise.
      */
-    private boolean isBrowsing(String entityServiceType)
+    public boolean isBrowsing(String entityServiceType)
     {
         return browseListenerMap.containsKey(entityServiceType);
     }
@@ -569,6 +568,18 @@ public final class PlatformSDManager implements ServiceListener
         return resultList;
     }
 
+    /**
+     * Helper method for normalizing service type to be compatible with JmDNS requirements (prepended with underscore).
+     * 
+     * @param serviceType
+     *            - input {@link String} service type.
+     * @return {@link String} underscore prepended service type.
+     */
+    private String normalizeServiceType(String serviceType)
+    {
+        return serviceType.startsWith(KEY_UNDERSCORE) ? serviceType : KEY_UNDERSCORE.concat(serviceType);
+    }
+
     @Override
     public void serviceAdded(ServiceEvent event)
     {
@@ -600,7 +611,7 @@ public final class PlatformSDManager implements ServiceListener
     {
         LOG.trace(String.format(MSG_SERVICE_RESOLVED, event.getInfo()));
 
-        // Add to cache/
+        // Add to cache.
         try
         {
             serviceCacheRWLock.writeLock().lock();
@@ -620,7 +631,7 @@ public final class PlatformSDManager implements ServiceListener
         try
         {
             browseRWLock.readLock().lock();
-            if (!browseListenerMap.containsKey(event.getInfo().getApplication()))
+            if (browseListenerMap.containsKey(event.getInfo().getApplication()))
             {
                 for (ISDListener listener : browseListenerMap.get(event.getInfo().getApplication()))
                 {
