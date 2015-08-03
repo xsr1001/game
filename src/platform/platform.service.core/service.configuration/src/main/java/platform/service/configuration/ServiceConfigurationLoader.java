@@ -106,7 +106,7 @@ public final class ServiceConfigurationLoader
         List<Source> schemaSourceList = new LinkedList<Source>();
         for (String schemaEntry : parsedSchemaList)
         {
-            String[] splitSchemaEntry = schemaEntry.split(":");
+            String[] splitSchemaEntry = schemaEntry.split("#");
             schemaSourceList.add(new StreamSource(
                 ServiceConfigurationLoader.class.getResourceAsStream(splitSchemaEntry[0])));
             packageStringBuilder.append(splitSchemaEntry[1]).append(":");
@@ -298,7 +298,7 @@ public final class ServiceConfigurationLoader
 
         for (String schemaEntry : schemaList)
         {
-            if (schemaEntry.indexOf(":") == -1)
+            if (schemaEntry.indexOf("#") == -1)
             {
                 LOG.error(ERROR_SCHEMA_CATALOG_FORMAT);
                 throw new ConfigurationException(ERROR_SCHEMA_CATALOG_FORMAT);

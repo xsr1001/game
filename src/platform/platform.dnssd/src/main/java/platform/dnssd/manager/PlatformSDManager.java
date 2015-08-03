@@ -13,6 +13,7 @@ import game.core.util.ArgsChecker;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -164,6 +165,41 @@ public final class PlatformSDManager implements ServiceListener
         }
     }
 
+    public synchronized void shutdown()
+    {
+        LOG.enterMethod();
+
+        try
+        {
+            advertiseRWLock.writeLock().lock();
+
+            jmDNSManager.unregisterAllServices();
+            advertiseMap.clear();
+        }
+        finally
+        {
+            advertiseRWLock.writeLock().unlock();
+        }
+
+        try
+        {
+            browseRWLock.writeLock().lock();
+            for (String type : browseListenerMap.keySet())
+            {
+                jmDNSManager.removeServiceListener(
+                    constructServiceType(normalizeServiceType(type), DEFAULT_PROTOCOL_TCP,
+                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
+            }
+
+            browseListenerMap.clear();
+        }
+        finally
+        {
+            browseRWLock.writeLock().unlock();
+            LOG.exitMethod();
+        }
+    }
+
     /**
      * Advertise new service discovery entity on given platform instance.
      * 
@@ -299,12 +335,12 @@ public final class PlatformSDManager implements ServiceListener
      * Browse for entity on given platform instance.
      * 
      * @param browseResultListener
-     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     *            - a {@link ISDListener} implementation to provide callback to notify browse results.
      * @param entityServiceType
      *            - a {@link String} entity service type to browse for.
      * @param browseResultFilter
-     *            - an implementation of {@link ISDResultFilter} to filter received results. Non mandatory. Caller
-     *            should provide necessary business logic for filtering results. If null, all results will be passed via
+     *            - an implementation of {@link ISDResultFilter} to filter received results. Optional. Caller should
+     *            provide necessary business logic for filtering results. If null, all results will be passed via
      *            provided callback.
      * @throws PlatformException
      *             - throw {@link PlatformException} on browse error.
@@ -546,8 +582,8 @@ public final class PlatformSDManager implements ServiceListener
      * elements.
      * 
      * @param serviceInfoList
-     *            - source {@link List} of {@link ServiceInfo} elements.
-     * @return - a {@link List} of {@link SDEntityBrowseResult} elements.
+     *            - source {@link List}<{@link ServiceInfo}> of JmDNS resolved services.
+     * @return - a {@link List}<{@link SDEntityBrowseResult}> internal elements.
      */
     private List<SDEntityBrowseResult> toSDEntityBrowseResultList(List<ServiceInfo> serviceInfoList)
     {
@@ -556,9 +592,10 @@ public final class PlatformSDManager implements ServiceListener
         for (ServiceInfo serviceInfo : serviceInfoList)
         {
             Map<String, String> entityContextMap = new HashMap<String, String>();
-            while (serviceInfo.getPropertyNames().hasMoreElements())
+            Enumeration<String> propertyNames = serviceInfo.getPropertyNames();
+            while (propertyNames.hasMoreElements())
             {
-                String propertyName = serviceInfo.getPropertyNames().nextElement();
+                String propertyName = propertyNames.nextElement();
                 entityContextMap.put(propertyName, serviceInfo.getPropertyString(propertyName));
             }
 
@@ -642,7 +679,7 @@ public final class PlatformSDManager implements ServiceListener
         }
         finally
         {
-            browseRWLock.writeLock().unlock();
+            browseRWLock.readLock().unlock();
         }
     }
 
@@ -654,8 +691,8 @@ public final class PlatformSDManager implements ServiceListener
      * @param entityServiceType
      *            - a {@link String} entity service type for which results were found.
      * @param serviceInfoList
-     *            - a {@link List} of {@link ServiceInfo} results for entity service type that were discovered. This may
-     *            contain cached service entries or freshly discovered ones.
+     *            - a {@link List}<@link ServiceInfo}> of service info results for entity service type that were
+     *            discovered. This may contain cached service entries or freshly discovered ones.
      */
     private void notifyListener(ISDListener sdListener, String entityServiceType, List<ServiceInfo> serviceInfoList)
     {

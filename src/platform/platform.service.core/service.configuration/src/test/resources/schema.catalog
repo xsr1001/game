@@ -1,3 +1,3 @@
-/service_configuration.xsd:platform.service.configuration.schema
-/v1.0.0_service_configuration.xsd:platform.service_one.configuration.schema
-/v2.0.0_service_configuration.xsd:platform.service_two.configuration.schema
+/service_configuration.xsd#platform.service.configuration.schema
+/v1.0.0_service_configuration.xsd#platform.service_one.configuration.schema
+/v2.0.0_service_configuration.xsd#platform.service_two.configuration.schema

@@ -5,6 +5,7 @@
 
 package platform.dnssd.manager;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import junit.framework.Assert;
 
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -52,6 +54,8 @@ public class PlatformSDManagerTest implements ISDListener
         propertyMap.put("key1", "value1");
         propertyMap.put("key2", "value2");
     }
+
+    // Test service to advertise.
     private static final ServiceInfo SERVICE_INFO1 = ServiceInfo.create(
         "_".concat(TEST_SERVICE_TYPE1).concat("._tcp.").concat(TEST_PLATFORM_CONTEXT_MANAGER.getPlatformId()).concat(
             ".").concat(TEST_PLATFORM_CONTEXT_MANAGER.getDomain()).concat("."), TEST_SERVICE_NAME1, TEST_SERVICE_PORT1,
@@ -61,10 +65,10 @@ public class PlatformSDManagerTest implements ISDListener
     private static JmDNS jmDNSManager;
 
     // Wait mechanism for asynchronous results.
-    final CountDownLatch done = new CountDownLatch(1);
+    private final CountDownLatch done = new CountDownLatch(1);
 
     // Result list.
-    List<SDEntityBrowseResult> resultList;
+    private List<SDEntityBrowseResult> resultList = new ArrayList<SDEntityBrowseResult>();
 
     /**
      * Test using SD manager without initializing it before running other tests. Initialized stuff before running tests.
@@ -121,9 +125,6 @@ public class PlatformSDManagerTest implements ISDListener
         Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
         ex = null;
 
-        // Initialize platform SD manager.
-        PlatformSDManager.getInstance().init(TEST_PLATFORM_CONTEXT_MANAGER);
-
         // Advertise test services.
         jmDNSManager = JmDNS.create();
         jmDNSManager.registerService(SERVICE_INFO1);
@@ -139,6 +140,15 @@ public class PlatformSDManagerTest implements ISDListener
     }
 
     /**
+     * Initialize platform manager before each test.
+     */
+    @Before
+    public void before() throws Exception
+    {
+        PlatformSDManager.getInstance().init(TEST_PLATFORM_CONTEXT_MANAGER);
+    }
+
+    /**
      * Stop browsing and advertising after each test.
      * 
      * @throws Exception
@@ -146,8 +156,8 @@ public class PlatformSDManagerTest implements ISDListener
     @After
     public void after() throws Exception
     {
-        PlatformSDManager.getInstance().browseStop(this, "test-service1");
-        resultList = null;
+        PlatformSDManager.getInstance().shutdown();
+        resultList.clear();
     }
 
     /**
@@ -212,14 +222,83 @@ public class PlatformSDManagerTest implements ISDListener
         Assert.assertNull(ex);
         ex = null;
 
-        boolean doneWithin = done.await(555, TimeUnit.SECONDS);
+        boolean doneWithin = false;
+        if (done.getCount() == 1)
+        {
+            doneWithin = done.await(30, TimeUnit.SECONDS);
+        }
+        else
+        {
+            doneWithin = true;
+        }
         Assert.assertTrue(doneWithin);
         Assert.assertNotNull(resultList);
+
+        Assert.assertEquals(1, resultList.size());
+        Assert.assertNotNull(resultList.get(0));
+        SDEntityBrowseResult browseResult = resultList.get(0);
+
+        Assert.assertEquals(SERVICE_INFO1.getType(), browseResult.getType());
+        Assert.assertNotNull(browseResult.getInet4AddressArray());
+        Assert.assertNotNull(browseResult.getInet4AddressArray()[0]);
+
+        Assert.assertNotNull(browseResult.getSdEntityContext());
+        Assert.assertEquals(2, browseResult.getSdEntityContext().size());
+        Assert.assertNotNull(browseResult.getSdEntityContext().get("key1"));
+        Assert.assertEquals("value1", browseResult.getSdEntityContext().get("key1"));
+    }
+
+    /**
+     * Test browse caching functionality. Second result should be received instantly.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testbrowseCache() throws Exception
+    {
+        Exception ex = null;
+
+        // Test OK, actual browse.
+        try
+        {
+            Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+            PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, null);
+            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+        Assert.assertNull(ex);
+        ex = null;
+
+        boolean doneWithin = false;
+        if (done.getCount() == 1)
+        {
+            doneWithin = done.await(30, TimeUnit.SECONDS);
+        }
+        else
+        {
+            doneWithin = true;
+        }
+        Assert.assertTrue(doneWithin);
+        Assert.assertNotNull(resultList);
+
+        Assert.assertEquals(1, resultList.size());
+        Assert.assertNotNull(resultList.get(0));
+        SDEntityBrowseResult browseResult = resultList.get(0);
+
+        PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, null);
+        Assert.assertEquals(2, resultList.size());
+        Assert.assertNotNull(resultList.get(1));
+        SDEntityBrowseResult browseResultCached = resultList.get(1);
+        Assert.assertEquals(browseResult.getType(), browseResultCached.getType());
     }
 
     @Override
     public void serviceResolved(List<SDEntityBrowseResult> serviceBrowseResultList)
     {
         done.countDown();
+        resultList.addAll(serviceBrowseResultList);
     }
 }

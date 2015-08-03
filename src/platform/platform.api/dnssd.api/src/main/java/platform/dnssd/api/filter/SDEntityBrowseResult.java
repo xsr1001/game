@@ -18,7 +18,10 @@ public class SDEntityBrowseResult
     public SDEntityBrowseResult(String type, String name, Map<String, String> sdEntityContext,
         Inet4Address[] inet4AddressArray)
     {
-
+        this.type = type;
+        this.name = name;
+        this.sdEntityContext = sdEntityContext;
+        this.inet4AddressArray = inet4AddressArray;
     }
 
     public String getType()
