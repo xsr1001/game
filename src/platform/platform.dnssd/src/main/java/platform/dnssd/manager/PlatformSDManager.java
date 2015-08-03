@@ -510,11 +510,19 @@ public final class PlatformSDManager implements ServiceListener
         if (browseListenerMap.containsKey(entityServiceType))
         {
             browseListenerMap.get(entityServiceType).remove(browseResultListener);
+            if (browseListenerMap.get(entityServiceType).size() == 0)
+            {
+                browseListenerMap.remove(entityServiceType);
+            }
         }
 
         if (listenerFilterMap.containsKey(browseResultListener))
         {
             listenerFilterMap.get(browseResultListener).remove(entityServiceType);
+            if (listenerFilterMap.get(browseResultListener).size() == 0)
+            {
+                listenerFilterMap.remove(browseResultListener);
+            }
         }
     }
 

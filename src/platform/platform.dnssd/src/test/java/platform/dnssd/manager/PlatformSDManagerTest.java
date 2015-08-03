@@ -24,6 +24,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import platform.dnssd.api.IPlatformSDContextManager;
+import platform.dnssd.api.filter.ISDResultFilter;
+import platform.dnssd.api.filter.ISDSingleResultFilter;
 import platform.dnssd.api.filter.SDEntityBrowseResult;
 import platform.dnssd.api.listener.ISDListener;
 
@@ -149,7 +151,7 @@ public class PlatformSDManagerTest implements ISDListener
     }
 
     /**
-     * Stop browsing and advertising after each test.
+     * Shut down platform SD manager after each test.
      * 
      * @throws Exception
      */
@@ -225,7 +227,7 @@ public class PlatformSDManagerTest implements ISDListener
         boolean doneWithin = false;
         if (done.getCount() == 1)
         {
-            doneWithin = done.await(30, TimeUnit.SECONDS);
+            doneWithin = done.await(10, TimeUnit.SECONDS);
         }
         else
         {
@@ -237,11 +239,9 @@ public class PlatformSDManagerTest implements ISDListener
         Assert.assertEquals(1, resultList.size());
         Assert.assertNotNull(resultList.get(0));
         SDEntityBrowseResult browseResult = resultList.get(0);
-
         Assert.assertEquals(SERVICE_INFO1.getType(), browseResult.getType());
         Assert.assertNotNull(browseResult.getInet4AddressArray());
         Assert.assertNotNull(browseResult.getInet4AddressArray()[0]);
-
         Assert.assertNotNull(browseResult.getSdEntityContext());
         Assert.assertEquals(2, browseResult.getSdEntityContext().size());
         Assert.assertNotNull(browseResult.getSdEntityContext().get("key1"));
@@ -249,7 +249,7 @@ public class PlatformSDManagerTest implements ISDListener
     }
 
     /**
-     * Test browse caching functionality. Second result should be received instantly.
+     * Test browse caching functionality. Second result should be received instantly after executing browse.
      * 
      * @throws Exception
      */
@@ -258,7 +258,7 @@ public class PlatformSDManagerTest implements ISDListener
     {
         Exception ex = null;
 
-        // Test OK, actual browse.
+        // Browse for results.
         try
         {
             Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
@@ -275,7 +275,7 @@ public class PlatformSDManagerTest implements ISDListener
         boolean doneWithin = false;
         if (done.getCount() == 1)
         {
-            doneWithin = done.await(30, TimeUnit.SECONDS);
+            doneWithin = done.await(10, TimeUnit.SECONDS);
         }
         else
         {
@@ -283,18 +283,139 @@ public class PlatformSDManagerTest implements ISDListener
         }
         Assert.assertTrue(doneWithin);
         Assert.assertNotNull(resultList);
-
         Assert.assertEquals(1, resultList.size());
         Assert.assertNotNull(resultList.get(0));
         SDEntityBrowseResult browseResult = resultList.get(0);
 
+        /* This call to provse should result in a no-op on JmDNS manager and get cached results. */
         PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, null);
         Assert.assertEquals(2, resultList.size());
         Assert.assertNotNull(resultList.get(1));
         SDEntityBrowseResult browseResultCached = resultList.get(1);
         Assert.assertEquals(browseResult.getType(), browseResultCached.getType());
+        Assert.assertEquals(browseResult.getName(), browseResultCached.getName());
     }
 
+    /**
+     * Test browse result filter functionality.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseResultFilter() throws Exception
+    {
+        Exception ex = null;
+
+        // Test browse filter with null results.
+        try
+        {
+            Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+            PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDResultFilter() {
+
+                @Override
+                public List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList)
+                {
+                    return null;
+                }
+            });
+
+            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+        Assert.assertNull(ex);
+        ex = null;
+
+        boolean doneWithin = false;
+        if (done.getCount() == 1)
+        {
+            doneWithin = done.await(5, TimeUnit.SECONDS);
+        }
+        else
+        {
+            doneWithin = true;
+        }
+        Assert.assertFalse(doneWithin);
+        Assert.assertNotNull(resultList);
+        Assert.assertEquals(0, resultList.size());
+
+        // Test browse filter with positive result
+        try
+        {
+            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+            PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDResultFilter() {
+
+                @Override
+                public List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList)
+                {
+                    for (SDEntityBrowseResult result : sdEntityBrowseEntryList)
+                    {
+                        if (result.getName().equals("Check to nonexisting service name"))
+                        {
+                            sdEntityBrowseEntryList.remove(result);
+                        }
+                    }
+
+                    return sdEntityBrowseEntryList;
+                }
+            });
+            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+        Assert.assertNull(ex);
+        ex = null;
+
+        // Result should be instant because they will get cached.
+        Assert.assertNotNull(resultList);
+        Assert.assertNotNull(resultList);
+        Assert.assertEquals(1, resultList.size());
+        Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+
+        resultList.clear();
+
+        // Test browse filter with positive result and single entry filter.
+        try
+        {
+            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+            PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDSingleResultFilter() {
+
+                @Override
+                public List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList)
+                {
+                    for (SDEntityBrowseResult result : sdEntityBrowseEntryList)
+                    {
+                        if (result.getName().equals("Check to nonexisting service name"))
+                        {
+                            sdEntityBrowseEntryList.remove(result);
+                        }
+                    }
+
+                    return sdEntityBrowseEntryList;
+                }
+            });
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+        Assert.assertNull(ex);
+        ex = null;
+
+        // Result should be instant because they will get cached.
+        Assert.assertNotNull(resultList);
+        Assert.assertNotNull(resultList);
+        Assert.assertEquals(1, resultList.size());
+        Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+    }
+
+    /**
+     * {@inheritDoc} Set results to the local list to assert.
+     */
     @Override
     public void serviceResolved(List<SDEntityBrowseResult> serviceBrowseResultList)
     {
