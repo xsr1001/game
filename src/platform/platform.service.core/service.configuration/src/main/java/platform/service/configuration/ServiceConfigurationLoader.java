@@ -75,7 +75,7 @@ public final class ServiceConfigurationLoader
      * 
      * @return singleton instance of {@link ServiceConfigurationLoader}.
      * @throws ConfigurationException
-     *             - throw {@link ConfigurationException} on initialization error.
+     *             throw {@link ConfigurationException} on initialization error.
      */
     public static synchronized ServiceConfigurationLoader getInstance() throws ConfigurationException
     {
@@ -91,7 +91,7 @@ public final class ServiceConfigurationLoader
      * schemas.
      * 
      * @throws ConfigurationException
-     *             - throw {@link ConfigurationException} on initialization error.
+     *             throw {@link ConfigurationException} on initialization error.
      */
     private ServiceConfigurationLoader() throws ConfigurationException
     {
@@ -142,9 +142,9 @@ public final class ServiceConfigurationLoader
     /**
      * Load external configuration file as declared with JVM argument.
      * 
-     * @return - a {@link ServiceConfiguration} parsed configuration file.
+     * @return a {@link ServiceConfiguration} parsed configuration file.
      * @throws ConfigurationException
-     *             - throw {@link ConfigurationException} on configuration parsing error.
+     *             throw {@link ConfigurationException} on configuration parsing error.
      */
     public synchronized ServiceConfiguration loadConfiguration() throws ConfigurationException
     {
@@ -156,12 +156,12 @@ public final class ServiceConfigurationLoader
      * resource on the class path.
      * 
      * @param configurationFile
-     *            - a {@link String} absolute path to the configuration file or an internal class path resource.
+     *            a {@link String} absolute path to the configuration file or an internal class path resource.
      * @param forceParse
-     *            - a flag to clear cached service configuration object.
-     * @return - parsed and populated {@link ServiceConfiguration} object.
+     *            a flag to clear cached service configuration object.
+     * @return parsed and populated {@link ServiceConfiguration} object.
      * @throws ConfigurationException
-     *             - throw {@link ConfigurationException} on configuration parsing error.
+     *             throw {@link ConfigurationException} on configuration parsing error.
      */
     public synchronized ServiceConfiguration loadConfiguration(String configurationFile, boolean forceParse)
         throws ConfigurationException
@@ -241,7 +241,7 @@ public final class ServiceConfigurationLoader
      * 
      * @return a {@link List} of {@link String} entries in schema.catalog file.
      * @throws ConfigurationException
-     *             - throw {@link ConfigurationException} on schema catalog parsing error.
+     *             throw {@link ConfigurationException} on schema catalog parsing error.
      */
     private List<String> parseSchemaCatalog() throws ConfigurationException
     {
@@ -284,9 +284,9 @@ public final class ServiceConfigurationLoader
      * Helper method to validate parsed schema catalog.
      * 
      * @param schemaList
-     *            - a {@link List}<@link String}> found line entries in schema catalog.
+     *            a {@link List}<@link String}> found line entries in schema catalog.
      * @throws ConfigurationException
-     *             - throw {@link ConfigurationException} on failed validation.
+     *             throw {@link ConfigurationException} on failed validation.
      */
     private void validateSchemaList(List<String> schemaList) throws ConfigurationException
     {

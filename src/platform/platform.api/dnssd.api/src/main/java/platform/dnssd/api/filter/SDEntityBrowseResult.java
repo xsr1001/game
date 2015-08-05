@@ -11,14 +11,16 @@ import java.util.Map;
 public class SDEntityBrowseResult
 {
     private String type;
+    private String fullType;
     private String name;
     private Map<String, String> sdEntityContext;
     private Inet4Address[] inet4AddressArray;
 
-    public SDEntityBrowseResult(String type, String name, Map<String, String> sdEntityContext,
+    public SDEntityBrowseResult(String fulltype, String type, String name, Map<String, String> sdEntityContext,
         Inet4Address[] inet4AddressArray)
     {
         this.type = type;
+        this.fullType = fulltype;
         this.name = name;
         this.sdEntityContext = sdEntityContext;
         this.inet4AddressArray = inet4AddressArray;
@@ -32,6 +34,16 @@ public class SDEntityBrowseResult
     public void setType(String type)
     {
         this.type = type;
+    }
+
+    public String getFullType()
+    {
+        return fullType;
+    }
+
+    public void setFullType(String fullType)
+    {
+        this.fullType = fullType;
     }
 
     public String getName()
