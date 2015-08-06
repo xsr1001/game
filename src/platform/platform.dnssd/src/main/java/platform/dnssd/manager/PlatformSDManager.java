@@ -25,7 +25,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.ServiceListener;
 
 import platform.dnssd.api.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
@@ -33,6 +32,7 @@ import platform.dnssd.api.filter.ISDResultFilter;
 import platform.dnssd.api.filter.ISDSingleResultFilter;
 import platform.dnssd.api.filter.ServiceBrowseResult;
 import platform.dnssd.api.listener.ISDListener;
+import platform.dnssd.listener.ISDBrowseResultListener;
 
 /**
  * Platform service discovery manager. Provides functionality for browsing and advertising entities via multicast DNS on
@@ -41,7 +41,7 @@ import platform.dnssd.api.listener.ISDListener;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public final class PlatformSDManager implements ServiceListener
+public final class PlatformSDManager implements ISDBrowseResultListener
 {
     // Logger.
     private static final Logger LOG = LoggerFactory.getLogger(PlatformSDManager.class);
@@ -72,6 +72,8 @@ public final class PlatformSDManager implements ServiceListener
 
     // Determines if PlatformSDManager is initialized.
     private AtomicBoolean initialized;
+
+    private SDManagerBrowse sdManagerBrowse;
 
     // Service type keys.
     private static final String DEFAULT_PROTOCOL_TCP = "tcp";
@@ -147,6 +149,9 @@ public final class PlatformSDManager implements ServiceListener
                 this.platformSDContextManager = platformSDContextManager;
 
                 jmDNSManager = JmDNS.create();
+
+                sdManagerBrowse = new SDManagerBrowse(jmDNSManager, this);
+
                 initialized.set(true);
             }
         }
@@ -746,5 +751,19 @@ public final class PlatformSDManager implements ServiceListener
                 }
             }
         }
+    }
+
+    @Override
+    public void notifyServiceResolved(ServiceBrowseResult browseResult)
+    {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void notifyServiceRemoved(ServiceBrowseResult browseResult)
+    {
+        // TODO Auto-generated method stub
+
     }
 }
