@@ -31,7 +31,7 @@ import platform.dnssd.api.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
 import platform.dnssd.api.filter.ISDResultFilter;
 import platform.dnssd.api.filter.ISDSingleResultFilter;
-import platform.dnssd.api.filter.SDEntityBrowseResult;
+import platform.dnssd.api.filter.ServiceBrowseResult;
 import platform.dnssd.api.listener.ISDListener;
 
 /**
@@ -93,7 +93,7 @@ public final class PlatformSDManager implements ServiceListener
     private Map<String, ServiceInfo> advertiseMap;
 
     // Service cache map. Map service entity type to list of resolved services.
-    private Map<String, List<SDEntityBrowseResult>> serviceCacheMap;
+    private Map<String, List<ServiceBrowseResult>> serviceCacheMap;
 
     // Browse listener map. Map entity service type to a set of listeners.
     private Map<String, Set<ISDListener>> browseListenerMap;
@@ -119,7 +119,7 @@ public final class PlatformSDManager implements ServiceListener
         initialized = new AtomicBoolean(false);
 
         advertiseMap = new HashMap<String, ServiceInfo>();
-        serviceCacheMap = new HashMap<String, List<SDEntityBrowseResult>>();
+        serviceCacheMap = new HashMap<String, List<ServiceBrowseResult>>();
         browseListenerMap = new HashMap<String, Set<ISDListener>>();
         listenerFilterMap = new HashMap<ISDListener, Map<String, ISDResultFilter>>();
 
@@ -369,7 +369,7 @@ public final class PlatformSDManager implements ServiceListener
             addBrowseListener(browseResultListener, entityServiceType, browseResultFilter);
 
             // Check cache for existing results.
-            List<SDEntityBrowseResult> cachedServiceList = serviceCacheMap.get(entityServiceType);
+            List<ServiceBrowseResult> cachedServiceList = serviceCacheMap.get(entityServiceType);
             if (cachedServiceList != null)
             {
                 notifyListener(browseResultListener, cachedServiceList);
@@ -390,11 +390,11 @@ public final class PlatformSDManager implements ServiceListener
      * Stop browsing for entity service.
      * 
      * @param browseResultListener
-     *            - a {@link ISDListener} that is browsing for a service.
+     *            a {@link ISDListener} that is browsing for a service.
      * @param entityServiceType
-     *            - a {@link String} entity service type a listener is browsing for.
+     *            a {@link String} entity service type a listener is browsing for.
      * @throws PlatformException
-     *             - throw {@link PlatformException} on browse stop error.
+     *             throw {@link PlatformException} on browse stop error.
      */
     public void browseStop(ISDListener browseResultListener, String entityServiceType) throws PlatformException
     {
@@ -582,13 +582,13 @@ public final class PlatformSDManager implements ServiceListener
     }
 
     /**
-     * Create a {@link SDEntityBrowseResult} object containing resolved service data from a {@link ServiceInfo} object.
+     * Create a {@link ServiceBrowseResult} object containing resolved service data from a {@link ServiceInfo} object.
      * 
      * @param serviceInfo
      *            source {@link ServiceInfo} resolved service.
-     * @return a {@link SDEntityBrowseResult}> object containing resolved service data.
+     * @return a {@link ServiceBrowseResult}> object containing resolved service data.
      */
-    private SDEntityBrowseResult createSDEntityBrowseResult(ServiceInfo serviceInfo)
+    private ServiceBrowseResult createSDEntityBrowseResult(ServiceInfo serviceInfo)
     {
         Map<String, String> entityContextMap = new HashMap<String, String>();
         Enumeration<String> propertyNames = serviceInfo.getPropertyNames();
@@ -598,7 +598,7 @@ public final class PlatformSDManager implements ServiceListener
             entityContextMap.put(propertyName, serviceInfo.getPropertyString(propertyName));
         }
 
-        return new SDEntityBrowseResult(serviceInfo.getType(), serviceInfo.getApplication(), serviceInfo.getName(),
+        return new ServiceBrowseResult(serviceInfo.getType(), serviceInfo.getApplication(), serviceInfo.getName(),
             entityContextMap, serviceInfo.getInet4Addresses());
     }
 
@@ -651,7 +651,7 @@ public final class PlatformSDManager implements ServiceListener
             serviceCacheRWLock.writeLock().lock();
             if (!serviceCacheMap.containsKey(event.getInfo().getApplication()))
             {
-                List<SDEntityBrowseResult> cachedBrowseResultList = new ArrayList<SDEntityBrowseResult>();
+                List<ServiceBrowseResult> cachedBrowseResultList = new ArrayList<ServiceBrowseResult>();
                 serviceCacheMap.put(event.getInfo().getApplication(), cachedBrowseResultList);
             }
             serviceCacheMap.get(event.getInfo().getApplication()).add(createSDEntityBrowseResult(event.getInfo()));
@@ -670,7 +670,7 @@ public final class PlatformSDManager implements ServiceListener
                 for (ISDListener listener : browseListenerMap.get(event.getInfo().getApplication()))
                 {
                     notifyListener(listener,
-                        Arrays.asList(new SDEntityBrowseResult[] { createSDEntityBrowseResult(event.getInfo()) }));
+                        Arrays.asList(new ServiceBrowseResult[] { createSDEntityBrowseResult(event.getInfo()) }));
                 }
             }
         }
@@ -687,10 +687,10 @@ public final class PlatformSDManager implements ServiceListener
      * @param sdListener
      *            a {@link ISDListener} to notify with filtered results.
      * @param serviceInfoList
-     *            a {@link List} of {@link SDEntityBrowseResult} objects of that were resolved. This may contain cached
+     *            a {@link List} of {@link ServiceBrowseResult} objects of that were resolved. This may contain cached
      *            results or freshly resolved ones.
      */
-    private void notifyListener(ISDListener sdListener, List<SDEntityBrowseResult> serviceResultList)
+    private void notifyListener(ISDListener sdListener, List<ServiceBrowseResult> serviceResultList)
     {
         String serviceType = serviceResultList.get(0).getType();
 
@@ -709,7 +709,7 @@ public final class PlatformSDManager implements ServiceListener
             browseRWLock.readLock().unlock();
         }
 
-        List<SDEntityBrowseResult> filteredServiceResultList = null;
+        List<ServiceBrowseResult> filteredServiceResultList = null;
         if (resultFilter != null)
         {
             filteredServiceResultList = resultFilter.filter(serviceResultList);

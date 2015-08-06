@@ -8,7 +8,7 @@ package platform.dnssd.api.filter;
 import java.net.Inet4Address;
 import java.util.Map;
 
-public class SDEntityBrowseResult
+public class ServiceBrowseResult
 {
     private String type;
     private String fullType;
@@ -16,7 +16,7 @@ public class SDEntityBrowseResult
     private Map<String, String> sdEntityContext;
     private Inet4Address[] inet4AddressArray;
 
-    public SDEntityBrowseResult(String fulltype, String type, String name, Map<String, String> sdEntityContext,
+    public ServiceBrowseResult(String fulltype, String type, String name, Map<String, String> sdEntityContext,
         Inet4Address[] inet4AddressArray)
     {
         this.type = type;

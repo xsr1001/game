@@ -26,7 +26,7 @@ import org.junit.Test;
 import platform.dnssd.api.IPlatformSDContextManager;
 import platform.dnssd.api.filter.ISDResultFilter;
 import platform.dnssd.api.filter.ISDSingleResultFilter;
-import platform.dnssd.api.filter.SDEntityBrowseResult;
+import platform.dnssd.api.filter.ServiceBrowseResult;
 import platform.dnssd.api.listener.ISDListener;
 
 /**
@@ -76,7 +76,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     private CountDownLatch done = new CountDownLatch(1);
 
     // Result list.
-    private List<SDEntityBrowseResult> resultList = new ArrayList<SDEntityBrowseResult>();
+    private List<ServiceBrowseResult> resultList = new ArrayList<ServiceBrowseResult>();
 
     /**
      * Test using SD manager without initializing it before running other tests. Initialized stuff before running tests.
@@ -221,7 +221,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
 
         Assert.assertEquals(1, resultList.size());
         Assert.assertNotNull(resultList.get(0));
-        SDEntityBrowseResult browseResult = resultList.get(0);
+        ServiceBrowseResult browseResult = resultList.get(0);
         Assert.assertEquals(SERVICE_INFO1.getType(), browseResult.getFullType());
         Assert.assertNotNull(browseResult.getInet4AddressArray());
         Assert.assertNotNull(browseResult.getInet4AddressArray()[0]);
@@ -268,13 +268,13 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertNotNull(resultList);
         Assert.assertEquals(1, resultList.size());
         Assert.assertNotNull(resultList.get(0));
-        SDEntityBrowseResult browseResult = resultList.get(0);
+        ServiceBrowseResult browseResult = resultList.get(0);
 
         /* This call to browse should result in a no-op on JmDNS manager and get cached results. */
         PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, null);
         Assert.assertEquals(2, resultList.size());
         Assert.assertNotNull(resultList.get(1));
-        SDEntityBrowseResult browseResultCached = resultList.get(1);
+        ServiceBrowseResult browseResultCached = resultList.get(1);
         Assert.assertEquals(browseResult.getFullType(), browseResultCached.getFullType());
         Assert.assertEquals(browseResult.getName(), browseResultCached.getName());
     }
@@ -296,7 +296,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
             PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDResultFilter() {
 
                 @Override
-                public List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList)
+                public List<ServiceBrowseResult> filter(List<ServiceBrowseResult> sdEntityBrowseEntryList)
                 {
                     return null;
                 }
@@ -331,9 +331,9 @@ public class PlatformSDManagerBrowseTest implements ISDListener
             PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDResultFilter() {
 
                 @Override
-                public List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList)
+                public List<ServiceBrowseResult> filter(List<ServiceBrowseResult> sdEntityBrowseEntryList)
                 {
-                    for (SDEntityBrowseResult result : sdEntityBrowseEntryList)
+                    for (ServiceBrowseResult result : sdEntityBrowseEntryList)
                     {
                         if (result.getName().equals("Check to nonexisting service name"))
                         {
@@ -368,9 +368,9 @@ public class PlatformSDManagerBrowseTest implements ISDListener
             PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDSingleResultFilter() {
 
                 @Override
-                public List<SDEntityBrowseResult> filter(List<SDEntityBrowseResult> sdEntityBrowseEntryList)
+                public List<ServiceBrowseResult> filter(List<ServiceBrowseResult> sdEntityBrowseEntryList)
                 {
-                    for (SDEntityBrowseResult result : sdEntityBrowseEntryList)
+                    for (ServiceBrowseResult result : sdEntityBrowseEntryList)
                     {
                         if (result.getName().equals("Check to nonexisting service name"))
                         {
@@ -446,7 +446,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         ISDListener toRemoveListener = new ISDListener() {
 
             @Override
-            public void serviceResolved(List<SDEntityBrowseResult> serviceBrowseResultList)
+            public void serviceResolved(List<ServiceBrowseResult> serviceBrowseResultList)
             {
                 done.countDown();
                 resultList.addAll(serviceBrowseResultList);
@@ -528,7 +528,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
      * {@inheritDoc} Set results to the local list to assert.
      */
     @Override
-    public void serviceResolved(List<SDEntityBrowseResult> serviceBrowseResultList)
+    public void serviceResolved(List<ServiceBrowseResult> serviceBrowseResultList)
     {
         done.countDown();
         resultList.addAll(serviceBrowseResultList);
