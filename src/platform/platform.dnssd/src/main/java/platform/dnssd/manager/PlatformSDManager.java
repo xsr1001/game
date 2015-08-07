@@ -48,17 +48,17 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private static final String ERROR_IO_EXCEPTION = "I/O error received while using JmDNS manager.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_INITIALIZED = "Sevice discovery manager has not been initialized yet.";
-    private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified.";
+    private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified with resolved servidce data.";
+    private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
+    private static final String ARG_BROWSE_LISTENER = "browseResultListener";
+    private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
     private static final String ARG_ENTITY_NETWORK_PORT = "sdEntityNetworkPort";
     private static final String ARG_ENTITY_NAME = "sdEntityName";
     private static final String ARG_ENTITY = "sdEntity";
     private static final String ARG_ENTITY_CONTEXT = "sdEntityContext";
     private static final String MSG_ADVERTISING = "Advertising new service discovery entity: [%s] on current platform.";
     private static final String MSG_ALREADY_ADVERTISING = "Service discovery entity with type: [%s] is already being advertised.";
-    private static final String ARG_BROWSE_LISTENER = "browseResultListener";
     private static final String ARG_SERVICE_TYPE = "serviceType";
-    private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
-    private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
 
     // Singleton instance.
     private static final PlatformSDManager INSTANCE = new PlatformSDManager();
@@ -88,10 +88,10 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     // Advertise map. Maps service discovery entity type to ServiceInfo.
     private Map<String, ServiceInfo> advertiseMap;
 
-    // Service cache map. Map service entity type to list of resolved services.
+    // Service cache map. Map service type to list of resolved services.
     private Map<String, List<ServiceBrowseResult>> serviceCacheMap;
 
-    // Browse listener map. Map entity service type to a set of listeners.
+    // Browse listener map. Map service type to a set of listeners listening for resolved services of this type.
     private Map<String, Set<ISDListener>> browseListenerMap;
 
     // Listener filter map. Maps listener to service type to result filter.
@@ -100,7 +100,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     /**
      * Singleton getter.
      * 
-     * @return return singleton instance of {@link USNSDManager}.
+     * @return - return singleton instance of {@link USNSDManager}.
      */
     public synchronized static PlatformSDManager getInstance()
     {
@@ -128,9 +128,9 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * Initialize platform SD manager with SD context manager.
      * 
      * @param platformSDContextManager
-     *            an instance of {@link IPlatformSDContextManager} defining context for service discovery.
+     *            - an instance of {@link IPlatformSDContextManager} defining context for service discovery.
      * @throws PlatformException
-     *             throw {@link PlatformException} on error.
+     *             - throw {@link PlatformException} on initialization error.
      */
     public synchronized void init(IPlatformSDContextManager platformSDContextManager) throws PlatformException
     {
@@ -174,13 +174,14 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         initialized.set(false);
 
         jmDNSManager.unregisterAllServices();
-
         sdManagerBrowse.shutdown();
 
         browseListenerMap.clear();
         listenerFilterMap.clear();
         advertiseMap.clear();
         serviceCacheMap.clear();
+
+        LOG.exitMethod();
     }
 
     /**
@@ -318,9 +319,9 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * Start browsing for a service.
      * 
      * @param browseResultListener
-     *            - a {@link ISDListener} implementation to notify resolved service data.
+     *            - a {@link ISDListener} instance to notify resolved service data to.
      * @param serviceType
-     *            - a {@link String} entity service type to browse for.
+     *            - a {@link String} service type to browse for.
      * @param browseResultFilter
      *            - an implementation of {@link ISDResultFilter} to filter received results. Optional. Caller should
      *            provide necessary business logic for filtering results. If null, all results will be passed via
@@ -402,7 +403,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * Stop browsing for service type.
      * 
      * @param browseResultListener
-     *            - a {@link ISDListener} browsing for given service type.
+     *            - a {@link ISDListener} instance browsing for given service type.
      * @param serviceType
      *            - a {@link String} service type a listener would like to stop browsing for.
      * @throws PlatformException
@@ -447,12 +448,12 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Add new browse result listener if not already present.
+     * Add a new browse result listener if not already present.
      * 
      * @param browseResultListener
-     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     *            - a {@link ISDListener} instance to notify resolved service data to.
      * @param serviceType
-     *            - a {@link String} service type to browse for.
+     *            - a {@link String} service type listener is browsing for.
      * @param browseResultFilter
      *            - an implementation of {@link ISDResultFilter} to filter received results.
      */
@@ -485,9 +486,9 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * Remove a browse result listener if present.
      * 
      * @param browseResultListener
-     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     *            - a {@link ISDListener} instance to notify resolved service data to.
      * @param serviceType
-     *            - a {@link String} service type to browse for.
+     *            - a {@link String} service type listener is browsing for.
      */
     private boolean removeBrowseListener(ISDListener browseResultListener, String entityServiceType)
     {
@@ -538,11 +539,11 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Check if service discovery manager is browsing for given entity service type.
+     * Check if service discovery manager is browsing for given service type.
      * 
      * @param serviceType
      *            - a {@link String} service type to check if browsing for.
-     * @return true if browsing for given entity service type or false otherwise.
+     * @return - true if browsing for given service type or false otherwise.
      */
     public boolean isBrowsing(String serviceType)
     {
@@ -573,17 +574,18 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Notify listener with resolved service results. If filter was provided when performing browse operation, results
+     * Notify listener with resolved service results. If filter was provided when performing browse operation results
      * will be filtered.
      * 
      * @param sdListener
-     *            a {@link ISDListener} to notify with filtered results.
-     * @param serviceInfoList
-     *            a {@link List} of {@link ServiceBrowseResult} objects of that were resolved. This may contain cached
+     *            - a {@link ISDListener} to notify with filtered results.
+     * @param serviceResultList
+     *            - a {@link List} of {@link ServiceBrowseResult} objects of that were resolved. This may contain cached
      *            results or freshly resolved ones.
      */
     private void notifyListener(ISDListener sdListener, List<ServiceBrowseResult> serviceResultList)
     {
+        // Retrieve service type from underlying object.
         String serviceType = serviceResultList.get(0).getType();
 
         // Check if we are still browsing (filter still exists).
@@ -601,6 +603,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
             browseRWLock.readLock().unlock();
         }
 
+        // Filter.
         List<ServiceBrowseResult> filteredServiceResultList = null;
         if (resultFilter != null)
         {
@@ -611,8 +614,25 @@ public final class PlatformSDManager implements ISDBrowseResultListener
             filteredServiceResultList = serviceResultList;
         }
 
+        // Notify and remove listener if single result filter was provided.
         if (filteredServiceResultList != null)
         {
+            if (resultFilter instanceof ISDSingleResultFilter)
+            {
+                try
+                {
+                    browseRWLock.writeLock().lock();
+
+                    removeBrowseListener(sdListener, serviceType);
+                    sdManagerBrowse.browseStop(constructServiceType(serviceType, DEFAULT_PROTOCOL_TCP,
+                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()));
+                }
+                finally
+                {
+                    browseRWLock.writeLock().unlock();
+                }
+            }
+
             // Notify listener and guard from listener exceptions.
             try
             {
@@ -621,21 +641,6 @@ public final class PlatformSDManager implements ISDBrowseResultListener
             catch (Exception e)
             {
                 LOG.warn(WARN_LISTENER_EXCEPTION, e);
-            }
-            finally
-            {
-                if (resultFilter instanceof ISDSingleResultFilter)
-                {
-                    try
-                    {
-                        browseRWLock.writeLock().lock();
-                        removeBrowseListener(sdListener, serviceType);
-                    }
-                    finally
-                    {
-                        browseRWLock.writeLock().unlock();
-                    }
-                }
             }
         }
     }
@@ -660,22 +665,13 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         }
 
         // Notify listeners.
-        try
+        if (browseListenerMap.containsKey(browseResult.getType()))
         {
-            browseRWLock.readLock().lock();
-            if (browseListenerMap.containsKey(browseResult.getType()))
+            for (ISDListener listener : browseListenerMap.get(browseResult.getType()))
             {
-                for (ISDListener listener : browseListenerMap.get(browseResult.getType()))
-                {
-                    notifyListener(listener, Arrays.asList(new ServiceBrowseResult[] { browseResult }));
-                }
+                notifyListener(listener, Arrays.asList(new ServiceBrowseResult[] { browseResult }));
             }
         }
-        finally
-        {
-            browseRWLock.readLock().unlock();
-        }
-
     }
 
     @Override

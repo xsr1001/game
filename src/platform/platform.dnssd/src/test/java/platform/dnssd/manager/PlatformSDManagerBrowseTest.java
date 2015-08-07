@@ -37,7 +37,19 @@ import platform.dnssd.api.listener.ISDListener;
  */
 public class PlatformSDManagerBrowseTest implements ISDListener
 {
-    // Test SD context manager.
+    // Field for testing fail scenario.
+    private static Exception ex;
+
+    // JmDNS manager to advertise test services.
+    private static JmDNS jmDNSManager;
+
+    // Wait mechanism for asynchronous results.
+    private CountDownLatch done = new CountDownLatch(1);
+
+    // Result list.
+    private List<ServiceBrowseResult> resultList = new ArrayList<ServiceBrowseResult>();
+
+    // Test data..
     private static final IPlatformSDContextManager TEST_PLATFORM_CONTEXT_MANAGER = new IPlatformSDContextManager() {
         @Override
         public String getPlatformId()
@@ -63,20 +75,10 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         propertyMap.put("key2", "value2");
     }
 
-    // Test service to advertise.
     private static final ServiceInfo SERVICE_INFO1 = ServiceInfo.create(
         "_".concat(TEST_SERVICE_TYPE1).concat("._tcp.").concat(TEST_PLATFORM_CONTEXT_MANAGER.getPlatformId()).concat(
             ".").concat(TEST_PLATFORM_CONTEXT_MANAGER.getDomain()).concat("."), TEST_SERVICE_NAME1, TEST_SERVICE_PORT1,
         0, 0, true, propertyMap);
-
-    // JmDNS manager to advertise test services.
-    private static JmDNS jmDNSManager;
-
-    // Wait mechanism for asynchronous results.
-    private CountDownLatch done = new CountDownLatch(1);
-
-    // Result list.
-    private List<ServiceBrowseResult> resultList = new ArrayList<ServiceBrowseResult>();
 
     /**
      * Initialized stuff before running tests.
@@ -105,10 +107,11 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     public void before() throws Exception
     {
         PlatformSDManager.getInstance().init(TEST_PLATFORM_CONTEXT_MANAGER);
+        ex = null;
     }
 
     /**
-     * Shut down platform SD manager after each test.
+     * Shut down platform SD manager after each test and clean.
      * 
      * @throws Exception
      */
@@ -122,13 +125,14 @@ public class PlatformSDManagerBrowseTest implements ISDListener
 
     /**
      * Test using SD manager without initializing it.
+     * 
+     * @throws Exception
      */
     @Test
-    public void testInitialized()
+    public void testNotInitialized()
     {
         PlatformSDManager.getInstance().shutdown();
 
-        Exception ex = null;
         try
         {
             PlatformSDManager.getInstance().browse(null, null, null);
@@ -155,13 +159,14 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     }
 
     /**
-     * Basic browse test.
+     * Test browse with incorrect parameters.
+     * 
+     * @throws Exception
      */
     @Test
-    public void testBrowse() throws Exception
+    public void testBrowseInvalid() throws Exception
     {
         // Test invalid argument.
-        Exception ex = null;
         try
         {
             PlatformSDManager.getInstance().browse(null, "test1", null);
@@ -187,7 +192,16 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertNotNull(ex);
         Assert.assertTrue(ex.getLocalizedMessage().startsWith("Illegal argument provided."));
         ex = null;
+    }
 
+    /**
+     * Test browse OK. Test proper flag retrieval.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseOKBrowsing() throws Exception
+    {
         // Test OK.
         try
         {
@@ -201,7 +215,16 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         }
         Assert.assertNull(ex);
         ex = null;
+    }
 
+    /**
+     * Test browse OK with found result.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseOKNotification() throws Exception
+    {
         // Test OK, actual browse.
         try
         {
@@ -241,15 +264,13 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     }
 
     /**
-     * Test browse caching functionality. Second result should be received instantly after executing browse.
+     * Test browse cache functionality. Second result should be received instantly after executing browse.
      * 
      * @throws Exception
      */
     @Test
     public void testbrowseCache() throws Exception
     {
-        Exception ex = null;
-
         // Browse for results.
         try
         {
@@ -289,15 +310,13 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     }
 
     /**
-     * Test browse result filter functionality.
+     * Test browse result filter no results.
      * 
      * @throws Exception
      */
     @Test
-    public void testBrowseResultFilter() throws Exception
+    public void testBrowseResultFilterNoResult() throws Exception
     {
-        Exception ex = null;
-
         // Test browse filter with null results.
         try
         {
@@ -332,11 +351,21 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertFalse(doneWithin);
         Assert.assertNotNull(resultList);
         Assert.assertEquals(0, resultList.size());
+    }
+
+    /**
+     * Test browse result filter with successful filtering.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseResultFilterResult() throws Exception
+    {
 
         // Test browse filter with positive result
         try
         {
-            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+            Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
             PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDResultFilter() {
 
                 @Override
@@ -362,18 +391,35 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertNull(ex);
         ex = null;
 
-        // Result should be instant because they will get cached.
-        Assert.assertNotNull(resultList);
+        boolean doneWithin = false;
+        if (done.getCount() == 1)
+        {
+            doneWithin = done.await(5, TimeUnit.SECONDS);
+        }
+        else
+        {
+            doneWithin = true;
+        }
+
+        Assert.assertTrue(doneWithin);
         Assert.assertNotNull(resultList);
         Assert.assertEquals(1, resultList.size());
         Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+    }
 
-        resultList.clear();
+    /**
+     * Test browse result filter with successful filtering and single entry filter.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseSingleResultFilter() throws Exception
+    {
 
-        // Test browse filter with positive result and single entry filter.
+        // Test browse filter with positive result and single result filter.
         try
         {
-            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
+            Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
             PlatformSDManager.getInstance().browse(this, TEST_SERVICE_TYPE1, new ISDSingleResultFilter() {
 
                 @Override
@@ -390,6 +436,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
                     return sdEntityBrowseEntryList;
                 }
             });
+            Assert.assertTrue(PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
         }
         catch (Exception e)
         {
@@ -398,32 +445,33 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertNull(ex);
         ex = null;
 
+        boolean doneWithin = false;
         if (done.getCount() == 1)
         {
-            doneWithin = done.await(5, TimeUnit.SECONDS);
+            doneWithin = done.await(10, TimeUnit.SECONDS);
         }
         else
         {
             doneWithin = true;
         }
 
-        // Result should be instant because they will get cached.
+        Assert.assertTrue(doneWithin);
         Assert.assertNotNull(resultList);
         Assert.assertNotNull(resultList);
         Assert.assertEquals(1, resultList.size());
+
+        // No more browsing because single result filter removed listener automatically.
         Assert.assertTrue(!PlatformSDManager.getInstance().isBrowsing(TEST_SERVICE_TYPE1));
     }
 
     /**
-     * Test browse stop.
+     * Test browse stop invalid input.
      * 
      * @throws Exception
      */
     @Test
-    public void testBrowseStop() throws Exception
+    public void testBrowseStopInvalidInput() throws Exception
     {
-        Exception ex = null;
-
         // Browse stop invalid input.
         try
         {
@@ -451,7 +499,16 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         }
         Assert.assertNull(ex);
         ex = null;
+    }
 
+    /**
+     * Test browse stop multiple listeners.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseStopMultipleListeners() throws Exception
+    {
         ISDListener toRemoveListener = new ISDListener() {
 
             @Override

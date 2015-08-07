@@ -144,9 +144,8 @@ public final class SDManagerBrowse implements ServiceListener
 
             if (browseReferenceCountMap.get(serviceType) == 0)
             {
-                serviceType = normalizeServiceType(serviceType);
                 LOG.info(String.format(MSG_BROWSE_STOP, serviceType));
-                jmDNSController.removeServiceListener(serviceType, this);
+                jmDNSController.removeServiceListener(normalizeServiceType(serviceType), this);
                 browseReferenceCountMap.remove(serviceType);
             }
         }
@@ -194,7 +193,7 @@ public final class SDManagerBrowse implements ServiceListener
      * 
      * @param serviceInfo
      *            - source {@link ServiceInfo} resolved service.
-     * @return - a {@link ServiceBrowseResult}> object containing resolved service data.
+     * @return - a {@link ServiceBrowseResult} object containing resolved service data.
      */
     private ServiceBrowseResult createServiceBrowseResult(ServiceInfo serviceInfo)
     {
