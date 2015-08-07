@@ -71,6 +71,27 @@ public final class SDManagerBrowse implements ServiceListener
     }
 
     /**
+     * Shutdown service discovery browse manager and cleanup.
+     */
+    public void shutdown()
+    {
+        try
+        {
+            browseMapRWLock.readLock().lock();
+            for (String serviceType : browseReferenceCountMap.keySet())
+            {
+                jmDNSController.removeServiceListener(serviceType, this);
+            }
+
+            browseReferenceCountMap.clear();
+        }
+        finally
+        {
+            browseMapRWLock.readLock().unlock();
+        }
+    }
+
+    /**
      * Increase the service type reference count and start browsing if it reaches 1.
      * 
      * @param serviceType
@@ -79,7 +100,6 @@ public final class SDManagerBrowse implements ServiceListener
     public void browse(String serviceType)
     {
         LOG.enterMethod(ARG_SERVICE_TYPE, serviceType);
-        serviceType = normalizeServiceType(serviceType);
         try
         {
             browseMapRWLock.writeLock().lock();
@@ -91,6 +111,7 @@ public final class SDManagerBrowse implements ServiceListener
 
             if (browseReferenceCountMap.get(serviceType) == 1)
             {
+                serviceType = normalizeServiceType(serviceType);
                 LOG.info(String.format(MSG_BROWSING, serviceType));
                 jmDNSController.addServiceListener(serviceType, this);
             }
@@ -111,7 +132,7 @@ public final class SDManagerBrowse implements ServiceListener
     public void browseStop(String serviceType)
     {
         LOG.enterMethod(ARG_SERVICE_TYPE, serviceType);
-        serviceType = normalizeServiceType(serviceType);
+
         try
         {
             browseMapRWLock.writeLock().lock();
@@ -123,6 +144,7 @@ public final class SDManagerBrowse implements ServiceListener
 
             if (browseReferenceCountMap.get(serviceType) == 0)
             {
+                serviceType = normalizeServiceType(serviceType);
                 LOG.info(String.format(MSG_BROWSE_STOP, serviceType));
                 jmDNSController.removeServiceListener(serviceType, this);
                 browseReferenceCountMap.remove(serviceType);
@@ -147,7 +169,7 @@ public final class SDManagerBrowse implements ServiceListener
         try
         {
             browseMapRWLock.readLock().lock();
-            return browseReferenceCountMap.containsKey(normalizeServiceType(serviceType));
+            return browseReferenceCountMap.containsKey(serviceType);
         }
         finally
         {

@@ -13,7 +13,6 @@ import game.core.util.ArgsChecker;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 
 import platform.dnssd.api.IPlatformSDContextManager;
@@ -51,11 +49,6 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_INITIALIZED = "Sevice discovery manager has not been initialized yet.";
     private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified.";
-    private static final String MSG_SERVICE_ADDED = "Service: [%s --> %s] has been added.";
-    private static final String MSG_SERVICE_REMOVED = "Service: [%s --> %s] has been removed.";
-    private static final String MSG_SERVICE_RESOLVED = "Service: [%s] has been resolved. Notifying listeners.";
-    private static final String MSG_BROWSING = "Stating with browse operation for entity service type: [%s].";
-    private static final String MSG_BROWSE_STOP = "Stopping with browse operation for entity service type: [%s].";
     private static final String ARG_ENTITY_NETWORK_PORT = "sdEntityNetworkPort";
     private static final String ARG_ENTITY_NAME = "sdEntityName";
     private static final String ARG_ENTITY = "sdEntity";
@@ -63,7 +56,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private static final String MSG_ADVERTISING = "Advertising new service discovery entity: [%s] on current platform.";
     private static final String MSG_ALREADY_ADVERTISING = "Service discovery entity with type: [%s] is already being advertised.";
     private static final String ARG_BROWSE_LISTENER = "browseResultListener";
-    private static final String ARG_ENTITY_SERVICE_TYPE = "entityServiceType";
+    private static final String ARG_SERVICE_TYPE = "serviceType";
     private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
     private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
 
@@ -73,18 +66,19 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     // Determines if PlatformSDManager is initialized.
     private AtomicBoolean initialized;
 
+    // Browse manager.
     private SDManagerBrowse sdManagerBrowse;
+
+    // Service discovery controller.
+    public JmDNS jmDNSManager;
+
+    // Platform service discovery context manager.
+    private IPlatformSDContextManager platformSDContextManager;
 
     // Service type keys.
     private static final String DEFAULT_PROTOCOL_TCP = "tcp";
     private static final String KEY_UNDERSCORE = "_";
     private static final String KEY_DOT_DELIMETER = ".";
-
-    // Platform service discovery context manager.
-    private IPlatformSDContextManager platformSDContextManager;
-
-    // Service discovery controller.
-    public JmDNS jmDNSManager;
 
     // Synchronization mechanisms.
     private ReentrantReadWriteLock advertiseRWLock;
@@ -149,7 +143,6 @@ public final class PlatformSDManager implements ISDBrowseResultListener
                 this.platformSDContextManager = platformSDContextManager;
 
                 jmDNSManager = JmDNS.create();
-
                 sdManagerBrowse = new SDManagerBrowse(jmDNSManager, this);
 
                 initialized.set(true);
@@ -181,20 +174,8 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         initialized.set(false);
 
         jmDNSManager.unregisterAllServices();
-        try
-        {
-            browseRWLock.writeLock().lock();
-            for (String entityServiceType : browseListenerMap.keySet())
-            {
-                jmDNSManager.removeServiceListener(
-                    constructServiceType(normalizeServiceType(entityServiceType), DEFAULT_PROTOCOL_TCP,
-                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
-            }
-        }
-        finally
-        {
-            browseRWLock.writeLock().unlock();
-        }
+
+        sdManagerBrowse.shutdown();
 
         browseListenerMap.clear();
         listenerFilterMap.clear();
@@ -334,23 +315,23 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Browse for entity service.
+     * Start browsing for a service.
      * 
      * @param browseResultListener
-     *            a {@link ISDListener} implementation to notify resolved service results.
-     * @param entityServiceType
-     *            a {@link String} entity service type to browse for.
+     *            - a {@link ISDListener} implementation to notify resolved service data.
+     * @param serviceType
+     *            - a {@link String} entity service type to browse for.
      * @param browseResultFilter
-     *            an implementation of {@link ISDResultFilter} to filter received results. Optional. Caller should
+     *            - an implementation of {@link ISDResultFilter} to filter received results. Optional. Caller should
      *            provide necessary business logic for filtering results. If null, all results will be passed via
      *            provided callback.
      * @throws PlatformException
-     *             throw {@link PlatformException} on browse error.
+     *             - throw {@link PlatformException} on browse error.
      */
-    public void browse(ISDListener browseResultListener, String entityServiceType, ISDResultFilter browseResultFilter)
+    public void browse(ISDListener browseResultListener, String serviceType, ISDResultFilter browseResultFilter)
         throws PlatformException
     {
-        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_ENTITY_SERVICE_TYPE, entityServiceType,
+        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_SERVICE_TYPE, serviceType,
             ARG_BROWSE_RESULT_FILTER, browseResultFilter);
 
         if (!initialized.get())
@@ -360,24 +341,50 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         try
         {
             ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
-            ArgsChecker.errorOnNull(entityServiceType, ARG_ENTITY_SERVICE_TYPE);
+            ArgsChecker.errorOnNull(serviceType, ARG_SERVICE_TYPE);
 
-            LOG.info(String.format(MSG_BROWSING, entityServiceType));
-
-            if (!isBrowsing(entityServiceType))
+            // Notify with cached data first.
+            try
             {
-                jmDNSManager.addServiceListener(
-                    constructServiceType(normalizeServiceType(entityServiceType), DEFAULT_PROTOCOL_TCP,
-                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
+                serviceCacheRWLock.readLock().lock();
+
+                List<ServiceBrowseResult> filteredServiceBrowseList = null;
+                if (browseResultFilter != null && serviceCacheMap.get(serviceType) != null)
+                {
+                    filteredServiceBrowseList = browseResultFilter.filter(serviceCacheMap.get(serviceType));
+                }
+                else
+                {
+                    filteredServiceBrowseList = serviceCacheMap.get(serviceType);
+                }
+
+                if (filteredServiceBrowseList != null && filteredServiceBrowseList.size() > 0)
+                {
+                    browseResultListener.serviceResolved(filteredServiceBrowseList);
+                    if (browseResultFilter instanceof ISDSingleResultFilter)
+                    {
+                        return;
+                    }
+                }
+            }
+            finally
+            {
+                serviceCacheRWLock.readLock().unlock();
             }
 
-            addBrowseListener(browseResultListener, entityServiceType, browseResultFilter);
-
-            // Check cache for existing results.
-            List<ServiceBrowseResult> cachedServiceList = serviceCacheMap.get(entityServiceType);
-            if (cachedServiceList != null)
+            try
             {
-                notifyListener(browseResultListener, cachedServiceList);
+                browseRWLock.writeLock().lock();
+
+                if (addBrowseListener(browseResultListener, serviceType, browseResultFilter))
+                {
+                    sdManagerBrowse.browse(constructServiceType(serviceType, DEFAULT_PROTOCOL_TCP,
+                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()));
+                }
+            }
+            finally
+            {
+                browseRWLock.writeLock().unlock();
             }
         }
         catch (IllegalArgumentException iae)
@@ -392,18 +399,18 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Stop browsing for entity service.
+     * Stop browsing for service type.
      * 
      * @param browseResultListener
-     *            a {@link ISDListener} that is browsing for a service.
-     * @param entityServiceType
-     *            a {@link String} entity service type a listener is browsing for.
+     *            - a {@link ISDListener} browsing for given service type.
+     * @param serviceType
+     *            - a {@link String} service type a listener would like to stop browsing for.
      * @throws PlatformException
-     *             throw {@link PlatformException} on browse stop error.
+     *             - throw {@link PlatformException} on browse stop error.
      */
-    public void browseStop(ISDListener browseResultListener, String entityServiceType) throws PlatformException
+    public void browseStop(ISDListener browseResultListener, String serviceType) throws PlatformException
     {
-        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_ENTITY_SERVICE_TYPE, entityServiceType);
+        LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_SERVICE_TYPE, serviceType);
 
         if (!initialized.get())
         {
@@ -412,24 +419,21 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         try
         {
             ArgsChecker.errorOnNull(browseResultListener, ARG_BROWSE_LISTENER);
-            ArgsChecker.errorOnNull(entityServiceType, ARG_ENTITY_SERVICE_TYPE);
+            ArgsChecker.errorOnNull(serviceType, ARG_SERVICE_TYPE);
 
-            if (!isBrowsing(entityServiceType))
+            try
             {
-                return;
+                browseRWLock.writeLock().lock();
+                if (removeBrowseListener(browseResultListener, serviceType))
+                {
+                    sdManagerBrowse.browseStop(constructServiceType(serviceType, DEFAULT_PROTOCOL_TCP,
+                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()));
+                }
             }
-
-            LOG.info(String.format(MSG_BROWSE_STOP, entityServiceType));
-
-            removeBrowseListener(browseResultListener, entityServiceType);
-
-            if (!isBrowsing(entityServiceType))
+            finally
             {
-                jmDNSManager.removeServiceListener(
-                    constructServiceType(normalizeServiceType(entityServiceType), DEFAULT_PROTOCOL_TCP,
-                        platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), this);
+                browseRWLock.writeLock().unlock();
             }
-
         }
         catch (IllegalArgumentException iae)
         {
@@ -446,78 +450,67 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * Add new browse result listener if not already present.
      * 
      * @param browseResultListener
-     *            a {@link ISDListener} implementation to provide callback for browse results.
-     * @param entityServiceType
-     *            a {@link String} entity service type to browse for.
+     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     * @param serviceType
+     *            - a {@link String} service type to browse for.
      * @param browseResultFilter
-     *            an implementation of {@link ISDResultFilter} to filter received results.
+     *            - an implementation of {@link ISDResultFilter} to filter received results.
      */
-    private void addBrowseListener(ISDListener browseResultListener, String entityServiceType,
+    private boolean addBrowseListener(ISDListener browseResultListener, String serviceType,
         ISDResultFilter browseResultFilter)
     {
-        try
-        {
-            browseRWLock.writeLock().lock();
+        boolean newAdded = false;
 
-            // Create browse listener map structure if not already present.
-            if (!browseListenerMap.containsKey(entityServiceType))
-            {
-                browseListenerMap.put(entityServiceType, new HashSet<ISDListener>());
-            }
-            browseListenerMap.get(entityServiceType).add(browseResultListener);
-
-            if (browseResultFilter != null)
-            {
-                // Create browse filter map structure if not already present.
-                if (!listenerFilterMap.containsKey(browseResultListener))
-                {
-                    listenerFilterMap.put(browseResultListener, new HashMap<String, ISDResultFilter>());
-                }
-                listenerFilterMap.get(browseResultListener).put(entityServiceType, browseResultFilter);
-            }
-        }
-        finally
+        // Create browse listener map structure if not already present.
+        if (!browseListenerMap.containsKey(serviceType))
         {
-            browseRWLock.writeLock().unlock();
+            browseListenerMap.put(serviceType, new HashSet<ISDListener>());
         }
+        newAdded = browseListenerMap.get(serviceType).add(browseResultListener);
+
+        // Create browse filter map structure if not already present.
+        if (browseResultFilter != null)
+        {
+            if (!listenerFilterMap.containsKey(browseResultListener))
+            {
+                listenerFilterMap.put(browseResultListener, new HashMap<String, ISDResultFilter>());
+            }
+            listenerFilterMap.get(browseResultListener).put(serviceType, browseResultFilter);
+        }
+
+        return newAdded;
     }
 
     /**
      * Remove a browse result listener if present.
      * 
      * @param browseResultListener
-     *            a {@link ISDListener} implementation to provide callback for browse results.
-     * @param entityServiceType
-     *            a {@link String} entity service type to browse for.
+     *            - a {@link ISDListener} implementation to provide callback for browse results.
+     * @param serviceType
+     *            - a {@link String} service type to browse for.
      */
-    private void removeBrowseListener(ISDListener browseResultListener, String entityServiceType)
+    private boolean removeBrowseListener(ISDListener browseResultListener, String entityServiceType)
     {
-        try
+        boolean removed = false;
+        if (browseListenerMap.containsKey(entityServiceType))
         {
-            browseRWLock.writeLock().lock();
-
-            if (browseListenerMap.containsKey(entityServiceType))
+            removed = browseListenerMap.get(entityServiceType).remove(browseResultListener);
+            if (browseListenerMap.get(entityServiceType).size() == 0)
             {
-                browseListenerMap.get(entityServiceType).remove(browseResultListener);
-                if (browseListenerMap.get(entityServiceType).size() == 0)
-                {
-                    browseListenerMap.remove(entityServiceType);
-                }
-            }
-
-            if (listenerFilterMap.containsKey(browseResultListener))
-            {
-                listenerFilterMap.get(browseResultListener).remove(entityServiceType);
-                if (listenerFilterMap.get(browseResultListener).size() == 0)
-                {
-                    listenerFilterMap.remove(browseResultListener);
-                }
+                browseListenerMap.remove(entityServiceType);
             }
         }
-        finally
+
+        if (listenerFilterMap.containsKey(browseResultListener))
         {
-            browseRWLock.writeLock().unlock();
+            listenerFilterMap.get(browseResultListener).remove(entityServiceType);
+            if (listenerFilterMap.get(browseResultListener).size() == 0)
+            {
+                listenerFilterMap.remove(browseResultListener);
+            }
         }
+
+        return removed;
     }
 
     /**
@@ -547,21 +540,14 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     /**
      * Check if service discovery manager is browsing for given entity service type.
      * 
-     * @param entityServiceType
-     *            a {@link String} entity service type to check if browsing for.
+     * @param serviceType
+     *            - a {@link String} service type to check if browsing for.
      * @return true if browsing for given entity service type or false otherwise.
      */
-    public boolean isBrowsing(String entityServiceType)
+    public boolean isBrowsing(String serviceType)
     {
-        try
-        {
-            this.browseRWLock.readLock().lock();
-            return browseListenerMap.containsKey(entityServiceType);
-        }
-        finally
-        {
-            this.browseRWLock.readLock().unlock();
-        }
+        return sdManagerBrowse.isBrowsing(constructServiceType(serviceType, DEFAULT_PROTOCOL_TCP,
+            platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()));
     }
 
     /**
@@ -583,105 +569,6 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         {
             advertiseRWLock.readLock().unlock();
             LOG.exitMethod();
-        }
-    }
-
-    /**
-     * Create a {@link ServiceBrowseResult} object containing resolved service data from a {@link ServiceInfo} object.
-     * 
-     * @param serviceInfo
-     *            source {@link ServiceInfo} resolved service.
-     * @return a {@link ServiceBrowseResult}> object containing resolved service data.
-     */
-    private ServiceBrowseResult createSDEntityBrowseResult(ServiceInfo serviceInfo)
-    {
-        Map<String, String> entityContextMap = new HashMap<String, String>();
-        Enumeration<String> propertyNames = serviceInfo.getPropertyNames();
-        while (propertyNames.hasMoreElements())
-        {
-            String propertyName = propertyNames.nextElement();
-            entityContextMap.put(propertyName, serviceInfo.getPropertyString(propertyName));
-        }
-
-        return new ServiceBrowseResult(serviceInfo.getType(), serviceInfo.getApplication(), serviceInfo.getName(),
-            entityContextMap, serviceInfo.getInet4Addresses());
-    }
-
-    /**
-     * Helper method for normalizing service type to be compatible with JmDNS requirements (prepended with underscore).
-     * 
-     * @param serviceType
-     *            input {@link String} service type.
-     * @return {@link String} underscore prepended service type.
-     */
-    private String normalizeServiceType(String serviceType)
-    {
-        return serviceType.startsWith(KEY_UNDERSCORE) ? serviceType : KEY_UNDERSCORE.concat(serviceType);
-    }
-
-    @Override
-    public void serviceAdded(ServiceEvent event)
-    {
-        LOG.trace(String.format(MSG_SERVICE_ADDED, event.getName(), event.getType()));
-        jmDNSManager.requestServiceInfo(event.getType(), event.getName());
-    }
-
-    @Override
-    public void serviceRemoved(ServiceEvent event)
-    {
-        LOG.trace(String.format(MSG_SERVICE_REMOVED, event.getName(), event.getType()));
-
-        try
-        {
-            serviceCacheRWLock.writeLock().lock();
-            if (serviceCacheMap.containsKey(event.getInfo().getApplication()))
-            {
-                serviceCacheMap.get(event.getInfo().getApplication()).remove(event.getInfo());
-            }
-        }
-        finally
-        {
-            serviceCacheRWLock.writeLock().unlock();
-        }
-    }
-
-    @Override
-    public void serviceResolved(ServiceEvent event)
-    {
-        LOG.trace(String.format(MSG_SERVICE_RESOLVED, event.getInfo()));
-
-        // Add to cache.
-        try
-        {
-            serviceCacheRWLock.writeLock().lock();
-            if (!serviceCacheMap.containsKey(event.getInfo().getApplication()))
-            {
-                List<ServiceBrowseResult> cachedBrowseResultList = new ArrayList<ServiceBrowseResult>();
-                serviceCacheMap.put(event.getInfo().getApplication(), cachedBrowseResultList);
-            }
-            serviceCacheMap.get(event.getInfo().getApplication()).add(createSDEntityBrowseResult(event.getInfo()));
-        }
-        finally
-        {
-            serviceCacheRWLock.writeLock().unlock();
-        }
-
-        // Notify listeners.
-        try
-        {
-            browseRWLock.readLock().lock();
-            if (browseListenerMap.containsKey(event.getInfo().getApplication()))
-            {
-                for (ISDListener listener : browseListenerMap.get(event.getInfo().getApplication()))
-                {
-                    notifyListener(listener,
-                        Arrays.asList(new ServiceBrowseResult[] { createSDEntityBrowseResult(event.getInfo()) }));
-                }
-            }
-        }
-        finally
-        {
-            browseRWLock.readLock().unlock();
         }
     }
 
@@ -756,14 +643,55 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     @Override
     public void notifyServiceResolved(ServiceBrowseResult browseResult)
     {
-        // TODO Auto-generated method stub
+        // Add to cache.
+        try
+        {
+            serviceCacheRWLock.writeLock().lock();
+            if (!serviceCacheMap.containsKey(browseResult.getType()))
+            {
+                List<ServiceBrowseResult> cachedBrowseResultList = new ArrayList<ServiceBrowseResult>();
+                serviceCacheMap.put(browseResult.getType(), cachedBrowseResultList);
+            }
+            serviceCacheMap.get(browseResult.getType()).add(browseResult);
+        }
+        finally
+        {
+            serviceCacheRWLock.writeLock().unlock();
+        }
+
+        // Notify listeners.
+        try
+        {
+            browseRWLock.readLock().lock();
+            if (browseListenerMap.containsKey(browseResult.getType()))
+            {
+                for (ISDListener listener : browseListenerMap.get(browseResult.getType()))
+                {
+                    notifyListener(listener, Arrays.asList(new ServiceBrowseResult[] { browseResult }));
+                }
+            }
+        }
+        finally
+        {
+            browseRWLock.readLock().unlock();
+        }
 
     }
 
     @Override
     public void notifyServiceRemoved(ServiceBrowseResult browseResult)
     {
-        // TODO Auto-generated method stub
-
+        try
+        {
+            serviceCacheRWLock.writeLock().lock();
+            if (serviceCacheMap.containsKey(browseResult.getType()))
+            {
+                serviceCacheMap.get(browseResult.getType()).remove(browseResult);
+            }
+        }
+        finally
+        {
+            serviceCacheRWLock.writeLock().unlock();
+        }
     }
 }

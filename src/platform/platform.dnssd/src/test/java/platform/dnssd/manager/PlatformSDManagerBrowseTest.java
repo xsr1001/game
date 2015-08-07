@@ -79,36 +79,11 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     private List<ServiceBrowseResult> resultList = new ArrayList<ServiceBrowseResult>();
 
     /**
-     * Test using SD manager without initializing it before running other tests. Initialized stuff before running tests.
+     * Initialized stuff before running tests.
      */
     @BeforeClass
-    public static void testNotInitializedAndBeforeClass() throws Exception
+    public static void BeforeClass() throws Exception
     {
-        Exception ex = null;
-        try
-        {
-            PlatformSDManager.getInstance().browse(null, null, null);
-        }
-        catch (Exception e)
-        {
-            ex = e;
-        }
-        Assert.assertNotNull(ex);
-        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
-        ex = null;
-
-        try
-        {
-            PlatformSDManager.getInstance().browseStop(null, null);
-        }
-        catch (Exception e)
-        {
-            ex = e;
-        }
-        Assert.assertNotNull(ex);
-        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
-        ex = null;
-
         // Advertise test services.
         jmDNSManager = JmDNS.create();
         jmDNSManager.registerService(SERVICE_INFO1);
@@ -146,7 +121,41 @@ public class PlatformSDManagerBrowseTest implements ISDListener
     }
 
     /**
-     * Test browse.
+     * Test using SD manager without initializing it.
+     */
+    @Test
+    public void testInitialized()
+    {
+        PlatformSDManager.getInstance().shutdown();
+
+        Exception ex = null;
+        try
+        {
+            PlatformSDManager.getInstance().browse(null, null, null);
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+        Assert.assertNotNull(ex);
+        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
+        ex = null;
+
+        try
+        {
+            PlatformSDManager.getInstance().browseStop(null, null);
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+        Assert.assertNotNull(ex);
+        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
+        ex = null;
+    }
+
+    /**
+     * Basic browse test.
      */
     @Test
     public void testBrowse() throws Exception
