@@ -48,7 +48,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private static final String ERROR_IO_EXCEPTION = "I/O error received while using JmDNS manager.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_INITIALIZED = "Sevice discovery manager has not been initialized yet.";
-    private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified with resolved servidce data.";
+    private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified with resolved service data.";
     private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
     private static final String ARG_BROWSE_LISTENER = "browseResultListener";
     private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
@@ -66,8 +66,9 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     // Determines if PlatformSDManager is initialized.
     private AtomicBoolean initialized;
 
-    // Browse manager.
+    // Browse and advertise managers.
     private SDManagerBrowse sdManagerBrowse;
+    private SDManagerAdvertise sdManagerAdvertise;
 
     // Service discovery controller.
     public JmDNS jmDNSManager;
@@ -144,6 +145,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
 
                 jmDNSManager = JmDNS.create();
                 sdManagerBrowse = new SDManagerBrowse(jmDNSManager, this);
+                sdManagerAdvertise = new SDManagerAdvertise(jmDNSManager);
 
                 initialized.set(true);
             }
@@ -172,9 +174,8 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         LOG.enterMethod();
 
         initialized.set(false);
-
-        jmDNSManager.unregisterAllServices();
         sdManagerBrowse.shutdown();
+        sdManagerAdvertise.shutdown();
 
         browseListenerMap.clear();
         listenerFilterMap.clear();
