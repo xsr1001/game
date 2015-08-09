@@ -27,10 +27,10 @@ public final class SDManagerAdvertise
     private static final Logger LOG = LoggerFactory.getLogger(SDManagerAdvertise.class);
 
     // Errors, args, messages.
-    private static final String ERROR_IO_EXCEPTION = "I/O error received advertising service: [%s].";
-    private static final String ERROR_ALREADY_ADVERTISED = "Service: [%s] has already been advertised.";
-    private static final String MSG_ADVERTISE = "Advertising new service: [%s].";
-    private static final String MSG_ADVERTISE_STOP = "Removing advertisement for service: [%s].";
+    private static final String ERROR_IO_EXCEPTION = "I/O error received advertising service with type: [%s] and name: [%s].";
+    private static final String ERROR_ALREADY_ADVERTISED = "Service with type: [%s] and name: [%s] has already been advertised.";
+    private static final String MSG_ADVERTISE = "Advertising new service with type: [%s] and name: [%s].";
+    private static final String MSG_ADVERTISE_STOP = "Removing advertisement for service with type: [%s] and name: [%s].";
     private static final String ARG_SERVICE_INFO = "serviceInfo";
 
     // Underlying JmDNS controller.
@@ -90,14 +90,14 @@ public final class SDManagerAdvertise
             advertiseSetRWLock.writeLock().lock();
             if (advertiseSet.add(serviceInfo))
             {
-                LOG.info(String.format(MSG_ADVERTISE, serviceInfo));
+                LOG.info(String.format(MSG_ADVERTISE, serviceInfo.getType(), serviceInfo.getName()));
                 jmDNSController.registerService(serviceInfo);
 
                 return true;
             }
             else
             {
-                LOG.error(String.format(ERROR_ALREADY_ADVERTISED, serviceInfo));
+                LOG.error(String.format(ERROR_ALREADY_ADVERTISED, serviceInfo.getType(), serviceInfo.getName()));
                 return false;
             }
         }
@@ -127,7 +127,7 @@ public final class SDManagerAdvertise
             advertiseSetRWLock.writeLock().lock();
             if (advertiseSet.remove(serviceInfo))
             {
-                LOG.info(String.format(MSG_ADVERTISE_STOP, serviceInfo));
+                LOG.info(String.format(MSG_ADVERTISE_STOP, serviceInfo.getType(), serviceInfo.getName()));
                 jmDNSController.unregisterService(serviceInfo);
             }
         }

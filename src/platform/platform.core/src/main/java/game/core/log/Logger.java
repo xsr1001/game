@@ -76,7 +76,7 @@ public final class Logger
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append(MSG_ENTER_METHOD).append(" ").append(MSG_ENTER_PARAMS).append(" ");
+        sb.append(MSG_ENTER_METHOD).append(" ").append(MSG_ENTER_PARAMS).append(System.lineSeparator());
         for (int i = 0; i < arguments.length; ++i)
         {
             if (i % 2 == 0)
@@ -85,7 +85,7 @@ public final class Logger
                 {
                     throw new IllegalArgumentException(ERROR_DESCRIBE_PARAMETER);
                 }
-                sb.append(String.valueOf(arguments[i])).append(" : ");
+                sb.append("  ").append(String.valueOf(arguments[i])).append(" --> ");
             }
             else
             {

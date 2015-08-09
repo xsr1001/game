@@ -47,7 +47,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     // Errors, args, messages.
     private static final String ERROR_IO_EXCEPTION = "I/O error received initializing JmDNS manager.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
-    private static final String ERROR_INITIALIZED = "Sevice discovery manager has not been initialized yet.";
+    private static final String ERROR_INITIALIZED = "Service discovery manager has not been initialized yet.";
     private static final String ERROR_SD_ENTITY_ALREADY_ADVERTISED = "SD Entity is already advertising a service.";
     private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified with resolved service data.";
     private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
