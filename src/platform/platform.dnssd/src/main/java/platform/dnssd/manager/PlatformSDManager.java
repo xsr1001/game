@@ -45,20 +45,19 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private static final Logger LOG = LoggerFactory.getLogger(PlatformSDManager.class);
 
     // Errors, args, messages.
-    private static final String ERROR_IO_EXCEPTION = "I/O error received while using JmDNS manager.";
+    private static final String ERROR_IO_EXCEPTION = "I/O error received initializing JmDNS manager.";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_INITIALIZED = "Sevice discovery manager has not been initialized yet.";
+    private static final String ERROR_SD_ENTITY_ALREADY_ADVERTISED = "SD Entity is already advertising a service.";
     private static final String WARN_LISTENER_EXCEPTION = "Listener exception raised while being notified with resolved service data.";
     private static final String ARG_PLATFORM_CONTEXT_MANAGER = "platformSDContextManager";
+    private static final String ARG_SERVICE_TYPE = "serviceType";
     private static final String ARG_BROWSE_LISTENER = "browseResultListener";
     private static final String ARG_BROWSE_RESULT_FILTER = "browseResultFilter";
-    private static final String ARG_ENTITY_NETWORK_PORT = "sdEntityNetworkPort";
-    private static final String ARG_ENTITY_NAME = "sdEntityName";
+    private static final String ARG_SERVICE_NETWORK_PORT = "serviceNetworkPort";
+    private static final String ARG_SERVICE_NAME = "serviceName";
     private static final String ARG_ENTITY = "sdEntity";
-    private static final String ARG_ENTITY_CONTEXT = "sdEntityContext";
-    private static final String MSG_ADVERTISING = "Advertising new service discovery entity: [%s] on current platform.";
-    private static final String MSG_ALREADY_ADVERTISING = "Service discovery entity with type: [%s] is already being advertised.";
-    private static final String ARG_SERVICE_TYPE = "serviceType";
+    private static final String ARG_SERVICE_CONTEXT = "serviceContext";
 
     // Singleton instance.
     private static final PlatformSDManager INSTANCE = new PlatformSDManager();
@@ -87,7 +86,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private ReentrantReadWriteLock browseRWLock;
 
     // Advertise map. Maps service discovery entity type to ServiceInfo.
-    private Map<String, ServiceInfo> advertiseMap;
+    private Map<ISDEntity, ServiceInfo> advertiseMap;
 
     // Service cache map. Map service type to list of resolved services.
     private Map<String, List<ServiceBrowseResult>> serviceCacheMap;
@@ -115,7 +114,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     {
         initialized = new AtomicBoolean(false);
 
-        advertiseMap = new HashMap<String, ServiceInfo>();
+        advertiseMap = new HashMap<ISDEntity, ServiceInfo>();
         serviceCacheMap = new HashMap<String, List<ServiceBrowseResult>>();
         browseListenerMap = new HashMap<String, Set<ISDListener>>();
         listenerFilterMap = new HashMap<ISDListener, Map<String, ISDResultFilter>>();
@@ -186,26 +185,26 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Advertise new service discovery entity on given platform instance.
+     * Advertise new a new service on given platform instance.
      * 
      * @param sdEntity
-     *            - a source {@link ISDEntity} to advertise.
-     * @param sdEntityName
-     *            - a {@link String} sd entity name. Name may be changed by underlying manager to preserve uniqueness.
-     * @param sdEntityNetworkPort
-     *            - a valid network port which sd entity is listening on.
-     * @param sdEntityContext
-     *            - a {@link Map}<{@link String},{@link String}> map providing custom sd entity context to advertise the
-     *            entity with.
-     * @return true if service discovery entity has been successfully advertised or false otherwise.
+     *            - a source {@link ISDEntity} service discovery entity to advertise.
+     * @param serviceName
+     *            - a {@link String} service name to advertise. Name may be changed by underlying manager to preserve
+     *            uniqueness.
+     * @param serviceNetworkPort
+     *            - a valid network port which a service to advertise is listening on.
+     * @param serviceContext
+     *            - a {@link Map} mapping a {@link String} context key to {@link String} value.
+     * @return true if service has been successfully advertised or false otherwise.
      * @throws PlatformException
-     *             - throw {@link PlatformException} on error.
+     *             - throw {@link PlatformException} on service advertisement error.
      */
-    public synchronized boolean advertise(final ISDEntity sdEntity, final String sdEntityName, int sdEntityNetworkPort,
-        final Map<String, String> sdEntityContext) throws PlatformException
+    public synchronized boolean advertise(final ISDEntity sdEntity, final String serviceName, int serviceNetworkPort,
+        final Map<String, String> serviceContext) throws PlatformException
     {
-        LOG.enterMethod(ARG_ENTITY, sdEntity, ARG_ENTITY_NAME, sdEntityName, ARG_ENTITY_NETWORK_PORT,
-            sdEntityNetworkPort, ARG_ENTITY_CONTEXT, sdEntityContext);
+        LOG.enterMethod(ARG_ENTITY, sdEntity, ARG_SERVICE_NAME, serviceName, ARG_SERVICE_NETWORK_PORT,
+            serviceNetworkPort, ARG_SERVICE_CONTEXT, serviceContext);
 
         if (!initialized.get())
         {
@@ -215,50 +214,55 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         try
         {
             ArgsChecker.errorOnNull(sdEntity, ARG_ENTITY);
-            ArgsChecker.errorOnNull(sdEntityName, ARG_ENTITY_NAME);
-
-            if (isAdvertised(sdEntity))
-            {
-                LOG.info(String.format(MSG_ALREADY_ADVERTISING, sdEntity));
-                return false;
-            }
-
-            Map<String, String> propertyMap = new HashMap<String, String>();
-            if (sdEntityContext != null)
-            {
-                propertyMap.putAll(sdEntityContext);
-            }
-
-            // Create service info and register.
-            ServiceInfo serviceInfo = ServiceInfo.create(
-                constructServiceType(sdEntity.getEntityServiceType(), DEFAULT_PROTOCOL_TCP,
-                    platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), sdEntityName,
-                sdEntityNetworkPort, 0, 0, true, propertyMap);
-
-            LOG.info(String.format(MSG_ADVERTISING, serviceInfo.toString()));
-            jmDNSManager.registerService(serviceInfo);
+            ArgsChecker.errorOnNull(serviceName, ARG_SERVICE_NAME);
 
             try
             {
-                advertiseRWLock.writeLock().lock();
-                advertiseMap.put(sdEntity.getEntityServiceType(), serviceInfo);
+                advertiseRWLock.readLock().lock();
+                if (advertiseMap.containsKey(sdEntity))
+                {
+                    LOG.error(ERROR_SD_ENTITY_ALREADY_ADVERTISED);
+                    return false;
+                }
             }
             finally
             {
-                advertiseRWLock.writeLock().unlock();
+                advertiseRWLock.readLock().unlock();
             }
 
-            return true;
+            Map<String, String> propertyMap = new HashMap<String, String>();
+            if (serviceContext != null)
+            {
+                propertyMap.putAll(serviceContext);
+            }
+
+            String serviceTypeNormalized = normalizeServiceType(sdEntity.getServiceType());
+
+            // Create service info
+            ServiceInfo serviceInfo = ServiceInfo.create(
+                constructServiceType(serviceTypeNormalized, DEFAULT_PROTOCOL_TCP,
+                    platformSDContextManager.getPlatformId(), platformSDContextManager.getDomain()), serviceName,
+                serviceNetworkPort, 0, 0, true, propertyMap);
+
+            boolean registered = sdManagerAdvertise.advertise(serviceInfo);
+            if (registered)
+            {
+                try
+                {
+                    advertiseRWLock.writeLock().lock();
+                    advertiseMap.put(sdEntity, serviceInfo);
+                }
+                finally
+                {
+                    advertiseRWLock.writeLock().unlock();
+                }
+            }
+            return registered;
         }
         catch (IllegalArgumentException iae)
         {
             LOG.error(ERROR_ILLEGAL_ARGUMENT, iae);
             throw new PlatformException(ERROR_ILLEGAL_ARGUMENT, iae);
-        }
-        catch (IOException ioe)
-        {
-            LOG.error(ERROR_IO_EXCEPTION, ioe);
-            throw new PlatformException(ERROR_IO_EXCEPTION, ioe);
         }
         finally
         {
@@ -267,12 +271,12 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Stops advertising service discovery entity.
+     * Stops advertising a service associated with provided SD entity.
      * 
      * @param sdEntity
-     *            - a source {@link ISDEntity} to stop advertising.
+     *            - a source {@link ISDEntity} to stop advertising its service.
      * @throws PlatformException
-     *             - throw {@link PlatformException} on error.
+     *             - throw {@link PlatformException} on advertisement stop error.
      */
     public synchronized void advertiseStop(ISDEntity sdEntity) throws PlatformException
     {
@@ -287,18 +291,25 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         {
             ArgsChecker.errorOnNull(sdEntity, ARG_ENTITY);
 
-            if (!isAdvertised(sdEntity))
+            try
             {
-                return;
+                advertiseRWLock.readLock().lock();
+                if (!advertiseMap.containsKey(sdEntity))
+                {
+                    return;
+                }
+            }
+            finally
+            {
+                advertiseRWLock.readLock().unlock();
             }
 
-            ServiceInfo serviceInfo = advertiseMap.get(sdEntity.getEntityServiceType());
-            jmDNSManager.unregisterService(serviceInfo);
+            sdManagerAdvertise.advertiseStop(advertiseMap.get(sdEntity));
 
             try
             {
                 advertiseRWLock.writeLock().lock();
-                advertiseMap.remove(sdEntity.getEntityServiceType());
+                advertiseMap.remove(sdEntity);
             }
             finally
             {
@@ -330,8 +341,8 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * @throws PlatformException
      *             - throw {@link PlatformException} on browse error.
      */
-    public void browse(ISDListener browseResultListener, String serviceType, ISDResultFilter browseResultFilter)
-        throws PlatformException
+    public synchronized void browse(ISDListener browseResultListener, String serviceType,
+        ISDResultFilter browseResultFilter) throws PlatformException
     {
         LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_SERVICE_TYPE, serviceType,
             ARG_BROWSE_RESULT_FILTER, browseResultFilter);
@@ -410,7 +421,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
      * @throws PlatformException
      *             - throw {@link PlatformException} on browse stop error.
      */
-    public void browseStop(ISDListener browseResultListener, String serviceType) throws PlatformException
+    public synchronized void browseStop(ISDListener browseResultListener, String serviceType) throws PlatformException
     {
         LOG.enterMethod(ARG_BROWSE_LISTENER, browseResultListener, ARG_SERVICE_TYPE, serviceType);
 
@@ -553,11 +564,11 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     }
 
     /**
-     * Check whether or not given sd entity is already being advertised.
+     * Check whether or not given SD entity is being advertised.
      * 
      * @param sdEntity
-     *            - a source {@link ISDEntity}.
-     * @return true if given sd entity is already being advertised.
+     *            - a source {@link ISDEntity} to check.
+     * @return true if given SD entity is being advertised.
      */
     public boolean isAdvertised(ISDEntity sdEntity)
     {
@@ -565,13 +576,25 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         try
         {
             advertiseRWLock.readLock().lock();
-            return advertiseMap.containsKey(sdEntity.getEntityServiceType());
+            return advertiseMap.containsKey(sdEntity);
         }
         finally
         {
             advertiseRWLock.readLock().unlock();
             LOG.exitMethod();
         }
+    }
+
+    /**
+     * Helper method for normalizing service type to be compatible with JmDNS requirements (prepended with underscore).
+     * 
+     * @param serviceType
+     *            - input {@link String} service type.
+     * @return - a {@link String} underscore prepended service type.
+     */
+    private String normalizeServiceType(String serviceType)
+    {
+        return serviceType.startsWith("_") ? serviceType : "_".concat(serviceType);
     }
 
     /**

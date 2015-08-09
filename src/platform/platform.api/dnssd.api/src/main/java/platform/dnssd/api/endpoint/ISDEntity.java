@@ -7,5 +7,5 @@ package platform.dnssd.api.endpoint;
 
 public interface ISDEntity
 {
-    public String getEntityServiceType();
+    public String getServiceType();
 }
