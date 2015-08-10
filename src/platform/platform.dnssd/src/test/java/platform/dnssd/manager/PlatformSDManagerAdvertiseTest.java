@@ -25,7 +25,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import platform.dnssd.api.IPlatformSDContextManager;
+import platform.dnssd.api.context.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
 
 public class PlatformSDManagerAdvertiseTest implements ServiceListener

@@ -23,7 +23,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import platform.dnssd.api.IPlatformSDContextManager;
+import platform.dnssd.api.context.IPlatformSDContextManager;
 import platform.dnssd.api.filter.ISDResultFilter;
 import platform.dnssd.api.filter.ISDSingleResultFilter;
 import platform.dnssd.api.filter.ServiceBrowseResult;
@@ -254,13 +254,13 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertEquals(1, resultList.size());
         Assert.assertNotNull(resultList.get(0));
         ServiceBrowseResult browseResult = resultList.get(0);
-        Assert.assertEquals(SERVICE_INFO1.getType(), browseResult.getFullType());
+        Assert.assertEquals(SERVICE_INFO1.getType(), browseResult.getServiceFullType());
         Assert.assertNotNull(browseResult.getInet4AddressArray());
         Assert.assertNotNull(browseResult.getInet4AddressArray()[0]);
-        Assert.assertNotNull(browseResult.getSdEntityContext());
-        Assert.assertEquals(2, browseResult.getSdEntityContext().size());
-        Assert.assertNotNull(browseResult.getSdEntityContext().get("key1"));
-        Assert.assertEquals("value1", browseResult.getSdEntityContext().get("key1"));
+        Assert.assertNotNull(browseResult.getServiceContext());
+        Assert.assertEquals(2, browseResult.getServiceContext().size());
+        Assert.assertNotNull(browseResult.getServiceContext().get("key1"));
+        Assert.assertEquals("value1", browseResult.getServiceContext().get("key1"));
     }
 
     /**
@@ -305,8 +305,8 @@ public class PlatformSDManagerBrowseTest implements ISDListener
         Assert.assertEquals(2, resultList.size());
         Assert.assertNotNull(resultList.get(1));
         ServiceBrowseResult browseResultCached = resultList.get(1);
-        Assert.assertEquals(browseResult.getFullType(), browseResultCached.getFullType());
-        Assert.assertEquals(browseResult.getName(), browseResultCached.getName());
+        Assert.assertEquals(browseResult.getServiceFullType(), browseResultCached.getServiceFullType());
+        Assert.assertEquals(browseResult.getServiceName(), browseResultCached.getServiceName());
     }
 
     /**
@@ -373,7 +373,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
                 {
                     for (ServiceBrowseResult result : sdEntityBrowseEntryList)
                     {
-                        if (result.getName().equals("Check to nonexisting service name"))
+                        if (result.getServiceName().equals("Check to nonexisting service name"))
                         {
                             sdEntityBrowseEntryList.remove(result);
                         }
@@ -427,7 +427,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
                 {
                     for (ServiceBrowseResult result : sdEntityBrowseEntryList)
                     {
-                        if (result.getName().equals("Check to nonexisting service name"))
+                        if (result.getServiceName().equals("Check to nonexisting service name"))
                         {
                             sdEntityBrowseEntryList.remove(result);
                         }

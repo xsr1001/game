@@ -11,6 +11,7 @@
   	<module>platform.api</module>
   	<module>platform.service.core</module>
   	<module>platform.core</module>
+  	<module>platform.dnssd.context</module>
   </modules>
   <dependencyManagement>
   	<dependencies>

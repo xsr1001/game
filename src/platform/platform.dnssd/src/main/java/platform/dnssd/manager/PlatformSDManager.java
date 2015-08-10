@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
-import platform.dnssd.api.IPlatformSDContextManager;
+import platform.dnssd.api.context.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
 import platform.dnssd.api.filter.ISDResultFilter;
 import platform.dnssd.api.filter.ISDSingleResultFilter;
@@ -610,7 +610,7 @@ public final class PlatformSDManager implements ISDBrowseResultListener
     private void notifyListener(ISDListener sdListener, List<ServiceBrowseResult> serviceResultList)
     {
         // Retrieve service type from underlying object.
-        String serviceType = serviceResultList.get(0).getType();
+        String serviceType = serviceResultList.get(0).getServiceType();
 
         // Check if we are still browsing (filter still exists).
         ISDResultFilter resultFilter = null;
@@ -676,12 +676,12 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         try
         {
             serviceCacheRWLock.writeLock().lock();
-            if (!serviceCacheMap.containsKey(browseResult.getType()))
+            if (!serviceCacheMap.containsKey(browseResult.getServiceType()))
             {
                 List<ServiceBrowseResult> cachedBrowseResultList = new ArrayList<ServiceBrowseResult>();
-                serviceCacheMap.put(browseResult.getType(), cachedBrowseResultList);
+                serviceCacheMap.put(browseResult.getServiceType(), cachedBrowseResultList);
             }
-            serviceCacheMap.get(browseResult.getType()).add(browseResult);
+            serviceCacheMap.get(browseResult.getServiceType()).add(browseResult);
         }
         finally
         {
@@ -689,9 +689,9 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         }
 
         // Notify listeners.
-        if (browseListenerMap.containsKey(browseResult.getType()))
+        if (browseListenerMap.containsKey(browseResult.getServiceType()))
         {
-            for (ISDListener listener : browseListenerMap.get(browseResult.getType()))
+            for (ISDListener listener : browseListenerMap.get(browseResult.getServiceType()))
             {
                 notifyListener(listener, Arrays.asList(new ServiceBrowseResult[] { browseResult }));
             }
@@ -704,9 +704,9 @@ public final class PlatformSDManager implements ISDBrowseResultListener
         try
         {
             serviceCacheRWLock.writeLock().lock();
-            if (serviceCacheMap.containsKey(browseResult.getType()))
+            if (serviceCacheMap.containsKey(browseResult.getServiceType()))
             {
-                serviceCacheMap.get(browseResult.getType()).remove(browseResult);
+                serviceCacheMap.get(browseResult.getServiceType()).remove(browseResult);
             }
         }
         finally
