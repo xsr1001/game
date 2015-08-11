@@ -3,7 +3,7 @@
  * @brief  Protocol exception represents violation of data contract between two USN end-points.
  */
 
-package game.core.api.exception;
+package platform.core.api.exception;
 
 /**
  * Protocol exception represents violation of data contract between two USN end-points.

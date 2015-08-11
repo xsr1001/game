@@ -3,7 +3,7 @@
  * @brief  USN exception represents error in one of the core USN concepts
  */
 
-package game.core.api.exception;
+package platform.core.api.exception;
 
 /**
  * USN exception represents error in one of the core USN concepts

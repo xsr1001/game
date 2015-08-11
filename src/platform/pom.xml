@@ -12,6 +12,7 @@
   	<module>platform.service.core</module>
   	<module>platform.core</module>
   	<module>platform.dnssd.context</module>
+  	<module>platform.bridge</module>
   </modules>
   <dependencyManagement>
   	<dependencies>
@@ -33,6 +34,11 @@
   		<dependency>
   			<groupId>game</groupId>
   			<artifactId>core.api</artifactId>
+  			<version>0.0.3-SNAPSHOT</version>
+  		</dependency>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>bridge.api</artifactId>
   			<version>0.0.3-SNAPSHOT</version>
   		</dependency>
   	</dependencies>

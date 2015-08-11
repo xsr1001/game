@@ -2,24 +2,24 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>game</groupId>
-    <artifactId>usn.bridge</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <artifactId>platform.bridge</artifactId>
+    <version>0.0.3-SNAPSHOT</version>
   </parent>
-  <artifactId>usn.bridge.impl</artifactId>
-  <name>game-usn-bridge-impl</name>
-  <description>Implementation for USN bridge.</description>
+  <artifactId>platform.bridge.base</artifactId>
+  <name>game-plaform-bridge-base</name>
+  <description>Base platform bridge functionality.</description>
   <dependencies>
-  	<dependency>
-  		<groupId>io.netty</groupId>
-  		<artifactId>netty-all</artifactId>
-  	</dependency>
   	<dependency>
   		<groupId>game</groupId>
   		<artifactId>core.api</artifactId>
   	</dependency>
   	<dependency>
   		<groupId>game</groupId>
-  		<artifactId>core</artifactId>
+  		<artifactId>platform.core</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.netty</groupId>
+  		<artifactId>netty-all</artifactId>
   	</dependency>
   	<dependency>
   		<groupId>game</groupId>

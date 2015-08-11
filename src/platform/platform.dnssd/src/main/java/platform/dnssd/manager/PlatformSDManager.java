@@ -5,7 +5,6 @@
 
 package platform.dnssd.manager;
 
-import game.core.api.exception.PlatformException;
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
@@ -24,6 +23,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
+import platform.core.api.exception.PlatformException;
 import platform.dnssd.api.context.IPlatformSDContextManager;
 import platform.dnssd.api.endpoint.ISDEntity;
 import platform.dnssd.api.filter.ISDResultFilter;

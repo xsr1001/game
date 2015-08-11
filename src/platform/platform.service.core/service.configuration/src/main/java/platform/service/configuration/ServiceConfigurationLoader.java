@@ -5,7 +5,6 @@
 
 package platform.service.configuration;
 
-import game.core.api.exception.ConfigurationException;
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
@@ -31,6 +30,7 @@ import javax.xml.validation.SchemaFactory;
 
 import org.xml.sax.SAXException;
 
+import platform.core.api.exception.ConfigurationException;
 import platform.service.configuration.schema.ServiceConfiguration;
 
 /**

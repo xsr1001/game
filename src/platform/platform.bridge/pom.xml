@@ -2,15 +2,15 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>game</groupId>
-    <artifactId>usn.core</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <artifactId>platform</artifactId>
+    <version>0.0.3-SNAPSHOT</version>
   </parent>
-  <artifactId>usn.bridge</artifactId>
+  <artifactId>platform.bridge</artifactId>
   <packaging>pom</packaging>
-  <name>game-usn-bridge</name>
-  <description>USN bridge functionality.</description>
+  <name>game-platform-bridge</name>
+  <description>Platform bridge functionality.</description>
   <modules>
-  	<module>usn.bridge.impl</module>
+  	<module>platform.bridge.base</module>
   </modules>
   <dependencyManagement>
   	<dependencies>

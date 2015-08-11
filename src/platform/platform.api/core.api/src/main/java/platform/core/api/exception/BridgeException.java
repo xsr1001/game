@@ -3,7 +3,7 @@
  * @brief Bridge exception represents any network or bridge specific error.
  */
 
-package game.core.api.exception;
+package platform.core.api.exception;
 
 /**
  * Bridge exception represents any network or bridge specific error.

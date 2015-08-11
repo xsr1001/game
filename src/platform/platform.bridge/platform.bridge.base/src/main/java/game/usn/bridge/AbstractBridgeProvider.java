@@ -5,7 +5,6 @@
 
 package game.usn.bridge;
 
-import game.core.api.exception.BridgeException;
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
@@ -37,6 +36,8 @@ import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
+
+import platform.core.api.exception.BridgeException;
 
 /**
  * Abstract bridge provider provides base functionality for providing unified service network bridge functionality for

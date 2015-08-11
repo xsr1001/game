@@ -5,7 +5,6 @@
 
 package game.usn.bridge;
 
-import game.core.api.exception.BridgeException;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.proxy.AbstractDataProxy;
@@ -17,6 +16,8 @@ import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import platform.core.api.exception.BridgeException;
 
 /**
  * USN Bridge manager. Provides consumers with functionality for registering either service or client proxies with their

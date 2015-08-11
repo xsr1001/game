@@ -5,7 +5,6 @@
 
 package game.usn.bridge.pipeline;
 
-import game.core.api.exception.BridgeException;
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
@@ -26,6 +25,8 @@ import io.netty.util.AttributeKey;
 import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import platform.core.api.exception.BridgeException;
 
 /**
  * USNPipelineInitializer. Provides network stack initialization logic for new connections. Consumer must provide valid

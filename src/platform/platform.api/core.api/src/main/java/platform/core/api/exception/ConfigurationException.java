@@ -1,10 +1,16 @@
 /**
  * @file ConfigurationException.java
- * @brief <description>
+ * @brief Configuration exception for configuration parsing error handling.
  */
 
-package game.core.api.exception;
+package platform.core.api.exception;
 
+/**
+ * Configuration exception for configuration parsing error handling.
+ * 
+ * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+ *
+ */
 public class ConfigurationException extends Exception
 {
     private static final long serialVersionUID = -6222047435218031325L;
