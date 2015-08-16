@@ -11,5 +11,16 @@
   <description>Core functionality for platform service.</description>
   <modules>
   	<module>service.configuration</module>
+  	<module>service.infrastructue</module>
+  	<module>service.infrastructure</module>
   </modules>
+  <dependencyManagement>
+  	<dependencies>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>service.api</artifactId>
+  			<version>0.0.3-SNAPSHOT</version>
+  		</dependency>
+  	</dependencies>
+  </dependencyManagement>
 </project>

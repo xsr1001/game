@@ -13,5 +13,6 @@
   	<module>dnssd.api</module>
   	<module>core.api</module>
   	<module>bridge.api</module>
+  	<module>service.api</module>
   </modules>
 </project>
