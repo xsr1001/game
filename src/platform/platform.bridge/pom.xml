@@ -11,6 +11,8 @@
   <description>Platform bridge functionality.</description>
   <modules>
   	<module>platform.bridge.base</module>
+  	<module>bridge.netty.base</module>
+  	<module>bridge.proxy</module>
   </modules>
   <dependencyManagement>
   	<dependencies>
@@ -18,6 +20,11 @@
   			<groupId>io.netty</groupId>
   			<artifactId>netty-all</artifactId>
   			<version>4.0.28.Final</version>
+  		</dependency>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>service.api</artifactId>
+  			<version>0.0.3-SNAPSHOT</version>
   		</dependency>
   	</dependencies>
   </dependencyManagement>

@@ -5,21 +5,13 @@
     <artifactId>platform.bridge</artifactId>
     <version>0.0.3-SNAPSHOT</version>
   </parent>
-  <artifactId>platform.bridge.base</artifactId>
-  <name>game-plaform-bridge-base</name>
-  <description>Base platform bridge functionality.</description>
+  <artifactId>bridge.proxy</artifactId>
+  <name>game-bridge-proxy</name>
+  <description>Bridge proxy functionality.</description>
   <dependencies>
   	<dependency>
   		<groupId>game</groupId>
-  		<artifactId>core.api</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>game</groupId>
-  		<artifactId>platform.core</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>io.netty</groupId>
-  		<artifactId>netty-all</artifactId>
+  		<artifactId>service.api</artifactId>
   	</dependency>
   	<dependency>
   		<groupId>game</groupId>

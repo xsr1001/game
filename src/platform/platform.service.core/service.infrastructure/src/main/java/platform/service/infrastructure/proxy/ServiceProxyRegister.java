@@ -100,8 +100,7 @@ public final class ServiceProxyRegister
                 throw new ServiceException(String.format(ERROR_SERVICE_PROXY_NOT_REGISTERED, serviceType));
             }
 
-            Class<? extends IServiceProxy> map = proxyMap.get(serviceType);
-            serviceProxy = map.newInstance();
+            serviceProxy = proxyMap.get(serviceType).newInstance();
             serviceProxy.initialize(serviceAddress);
 
             return serviceProxy;
