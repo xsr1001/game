@@ -6,7 +6,7 @@
 package game.usn.bridge.test.e2e.data;
 
 import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.proxy.AbstractDataProxy;
+import game.usn.bridge.proxy.AbstractDataProxy;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;

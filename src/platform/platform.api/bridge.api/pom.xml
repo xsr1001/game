@@ -14,5 +14,5 @@
   		<artifactId>netty-transport</artifactId>
   		<version>4.0.28.Final</version>
   	</dependency>
-  </dependencies>
+   </dependencies>
 </project>

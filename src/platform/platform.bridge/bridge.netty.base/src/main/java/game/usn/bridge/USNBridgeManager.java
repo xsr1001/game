@@ -7,9 +7,9 @@ package game.usn.bridge;
 
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.proxy.AbstractDataProxy;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
+import game.usn.bridge.proxy.AbstractDataProxy;
 import game.usn.bridge.util.USNBridgeUtil;
 
 import java.net.InetSocketAddress;
