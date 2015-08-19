@@ -1,6 +1,6 @@
 /**
  * @file AbstractDataProxy.java
- * @brief <description>
+ * @brief Abstract data proxy defines basic proxy functionality for platform service network base.
  */
 
 package game.usn.bridge.proxy;
@@ -10,7 +10,9 @@ import game.usn.bridge.USNBridgeManager;
 import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.api.protocol.AbstractUSNProtocol;
 import game.usn.bridge.pipeline.ChannelOptions;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.net.InetSocketAddress;
@@ -21,15 +23,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import platform.core.api.exception.BridgeException;
 
+/**
+ * Abstract data proxy defines basic proxy functionality for platform service network base.
+ * 
+ * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+ *
+ */
 public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter implements IChannelObserver
 {
+    // Args, messages, errors.
     private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
 
-    // A flag determining if data proxy is initialized.
-    private AtomicBoolean initialized;
+    // A flag determining if data proxy has been initialized.
+    protected AtomicBoolean initialized;
 
     // A flag determining if channel is active (either socket has connected or server socket was bound).
     private AtomicBoolean channelActive;
+
+    protected Channel channel;
 
     /**
      * Constructor.
@@ -59,8 +70,8 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
             if (getChannelOptions().isServer())
             {
                 USNBridgeManager.getInstance().registerServiceProxy(this,
-                    new HashSet<IChannelObserver>(Arrays.asList(new IChannelObserver[] { this })),
-                    servicePort != null ? servicePort : null, getChannelOptions());
+                    new HashSet<IChannelObserver>(Arrays.asList(new IChannelObserver[] { this })), servicePort,
+                    getChannelOptions());
             }
             else
             {
@@ -84,46 +95,8 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
         {
             // TODO: unregister a proxy from network base.
             initialized.set(false);
-            active.set(false);
         }
     }
-
-    @Override
-    public final void notifyChannelUp(String proxyName, InetSocketAddress address)
-    {
-        active.set(true);
-    }
-
-    @Override
-    public final void notifyChannelDown(String proxyName)
-    {
-        active.set(false);
-    }
-
-    /**
-     * Force implementation to provide unique proxy name.
-     * 
-     * @return - a {@link String} proxy name.
-     */
-    public abstract String getName();
-
-    /**
-     * Retrieve the p
-     * 
-     * @return
-     */
-    public abstract AbstractUSNProtocol getProtocol();
-
-    /**
-     * Provide default list of proxy in handlers. Specific proxy implementations may override this method to provide
-     * proxy specific handlers.
-     * 
-     * @return - a {@link List} of {@link ChannelHandler} objects, representing default proxy and custom proxy in
-     *         handlers.
-     */
-    public abstract List<ChannelHandler> getInHandlerList();
-
-    public abstract List<ChannelHandler> getOutHandlerList();
 
     /**
      * Retrieve proxy implementation specific channel options.
@@ -133,8 +106,63 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
     protected abstract ChannelOptions getChannelOptions();
 
     /**
-     * Proxy implementation specific logging.
+     * Retrieve proxy implementation specific name.
+     * 
+     * @return - a {@link String} proxy name.
      */
+    public abstract String getName();
+
+    /**
+     * Retrieve the proxy implementation specific protocol.
+     * 
+     * @return - an instance of {@link AbstractUSNProtocol}.
+     */
+    public abstract AbstractUSNProtocol getProtocol();
+
+    /**
+     * Provide proxy implementation specific list of in handlers.
+     * 
+     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy implementation specific in
+     *         handlers.
+     */
+    public abstract List<ChannelHandler> getInHandlerList();
+
+    /**
+     * Provide proxy implementation specific list of out handlers.
+     * 
+     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy implementation specific out
+     *         handlers.
+     */
+    public abstract List<ChannelHandler> getOutHandlerList();
+
     @Override
-    public abstract String toString();
+    public String toString()
+    {
+        return getName();
+    }
+
+    @Override
+    public final void notifyChannelUp(String proxyName, InetSocketAddress address)
+    {
+        if (proxyName.compareTo(getName()) == 0)
+        {
+            channelActive.set(true);
+        }
+    }
+
+    @Override
+    public final void notifyChannelDown(String proxyName)
+    {
+        if (proxyName.compareTo(getName()) == 0)
+        {
+            channelActive.set(false);
+        }
+    }
+
+    @Override
+    public final void channelActive(ChannelHandlerContext ctx) throws Exception
+    {
+        channel = ctx.channel();
+        ctx.fireChannelActive();
+    }
 }

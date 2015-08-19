@@ -26,6 +26,11 @@
   			<artifactId>service.api</artifactId>
   			<version>0.0.3-SNAPSHOT</version>
   		</dependency>
+  		<dependency>
+  			<groupId>game</groupId>
+  			<artifactId>bridge.netty.base</artifactId>
+  			<version>0.0.3-SNAPSHOT</version>
+  		</dependency>
   	</dependencies>
   </dependencyManagement>
 </project>

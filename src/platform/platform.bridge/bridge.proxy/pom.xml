@@ -17,5 +17,9 @@
   		<groupId>game</groupId>
   		<artifactId>bridge.api</artifactId>
   	</dependency>
+  	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>bridge.netty.base</artifactId>
+  	</dependency>
   </dependencies>
 </project>
