@@ -8,6 +8,7 @@ package game.usn.bridge.proxy;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.USNBridgeManager;
 import game.usn.bridge.api.listener.IChannelObserver;
+import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.api.protocol.AbstractUSNProtocol;
 import game.usn.bridge.pipeline.ChannelOptions;
 import io.netty.channel.Channel;
@@ -40,7 +41,7 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
     // A flag determining if channel is active (either socket has connected or server socket was bound).
     private AtomicBoolean channelActive;
 
-    protected Channel channel;
+    private Channel channel;
 
     /**
      * Constructor.
@@ -82,6 +83,13 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
             initialized.set(true);
         }
     }
+
+    protected final void sendPacket(AbstractPacket packet)
+    {
+        channel.writeAndFlush(packet).awaitUninterruptibly(2000);
+    }
+
+    protected abstract void receive(AbstractPacket packet);
 
     /**
      * Release the connection with remote service and unregister proxy with network base.
@@ -165,4 +173,12 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
         channel = ctx.channel();
         ctx.fireChannelActive();
     }
+
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
+    {
+        receive(AbstractPacket.class.cast(msg));
+        ctx.fireChannelRead(msg);
+    }
+
 }

@@ -30,6 +30,16 @@ public abstract class AbstractPlatformClientProxy extends AbstractDataProxy impl
 
     private CountDownLatch latch = new CountDownLatch(1);
 
+    // Provided instance of protocol to use.
+    private AbstractUSNProtocol consumerProtocol;
+
+    // Proxy implementation specific in and out handler lists.
+    private List<ChannelHandler> inHandlers;
+    private List<ChannelHandler> outHandlers;
+
+    // Provided channel options specific per proxy.
+    private ChannelOptions channelOptions;
+
     protected AbstractPlatformClientProxy()
     {
         super();
@@ -58,9 +68,10 @@ public abstract class AbstractPlatformClientProxy extends AbstractDataProxy impl
         }
     }
 
-    protected final Object send(AbstractPacket packet) throws BridgeException, InterruptedException
+    protected final AbstractPacket send(AbstractPacket packet) throws BridgeException
     {
-        channel.writeAndFlush(packet).awaitUninterruptibly(2000);
+        super.sendPacket(packet);
+
         if (!latch.await(3, TimeUnit.SECONDS))
         {
             throw new BridgeException("");
@@ -73,17 +84,18 @@ public abstract class AbstractPlatformClientProxy extends AbstractDataProxy impl
 
     protected final void notify(AbstractPacket packet) throws BridgeException
     {
+        super.sendPacket(packet);
+    }
+
+    /**
+     * {@inheritDoc} Determine if packet has been received for a synchronous request. Return from blocked synchronous
+     * thread or propagate asynchronous response.
+     */
+    @Override
+    protected void receive(AbstractPacket abstractPacket)
+    {
 
     }
 
-    // Provided instance of protocol to use.
-    private AbstractUSNProtocol consumerProtocol;
-
-    // Proxy implementation specific in and out handler lists.
-    private List<ChannelHandler> inHandlers;
-    private List<ChannelHandler> outHandlers;
-
-    // Provided channel options specific per proxy.
-    private ChannelOptions channelOptions;
-
+    protected abstract void receivePacket(AbstractPacket abstractPacket);
 }
