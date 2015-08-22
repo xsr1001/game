@@ -12,6 +12,8 @@ import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.api.protocol.AbstractUSNProtocol;
 import game.usn.bridge.pipeline.ChannelOptions;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -36,7 +38,7 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
     private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
 
     // A flag determining if data proxy has been initialized.
-    protected AtomicBoolean initialized;
+    private AtomicBoolean initialized;
 
     // A flag determining if channel is active (either socket has connected or server socket was bound).
     private AtomicBoolean channelActive;
@@ -84,13 +86,6 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
         }
     }
 
-    protected final void sendPacket(AbstractPacket packet)
-    {
-        channel.writeAndFlush(packet).awaitUninterruptibly(2000);
-    }
-
-    protected abstract void receive(AbstractPacket packet);
-
     /**
      * Release the connection with remote service and unregister proxy with network base.
      * 
@@ -104,6 +99,49 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
             // TODO: unregister a proxy from network base.
             initialized.set(false);
         }
+    }
+
+    /**
+     * Attempt to send a packet through the downstream pipeline to a remote service.
+     * 
+     * @param packet
+     *            - a source {@link AbstractPacket} packet to send.
+     * @throws BridgeException
+     *             - throws {@link BridgeException} on send failure.
+     */
+    protected final void sendPacket(AbstractPacket packet) throws BridgeException
+    {
+        channel.writeAndFlush(packet).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws BridgeException
+            {
+                if (!future.isSuccess())
+                {
+                    throw new BridgeException("", future.cause());
+                }
+            }
+        });
+    }
+
+    /**
+     * Receive a response from the remote service.
+     * 
+     * @param packet
+     *            - a {@link AbstractPacket} response packet.
+     */
+    protected abstract void receive(AbstractPacket packet);
+
+    /**
+     * {@inheritDoc}. Receive a response and forward it upstream.
+     * 
+     * @throws ClassCastException
+     *             - throws {@link ClassCastException} on cast failure. This generally should not occur as upstream
+     *             protocol handler should handle it.
+     */
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws ClassCastException
+    {
+        receive(AbstractPacket.class.cast(msg));
     }
 
     /**
@@ -173,12 +211,4 @@ public abstract class AbstractDataProxy extends ChannelInboundHandlerAdapter imp
         channel = ctx.channel();
         ctx.fireChannelActive();
     }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-    {
-        receive(AbstractPacket.class.cast(msg));
-        ctx.fireChannelRead(msg);
-    }
-
 }
