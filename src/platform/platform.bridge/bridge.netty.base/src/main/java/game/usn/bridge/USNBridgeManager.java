@@ -9,7 +9,7 @@ import game.core.util.ArgsChecker;
 import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
-import game.usn.bridge.proxy.AbstractDataProxy;
+import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import game.usn.bridge.util.USNBridgeUtil;
 
 import java.net.InetSocketAddress;
@@ -79,7 +79,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * Attempt to register service proxy and start the service.
      * 
      * @param serviceProxy
-     *            - an {@link AbstractDataProxy} service data end-point which serves as a data sink and provides service
+     *            - an {@link AbstractBridgeAdapter} service data end-point which serves as a data sink and provides service
      *            specific protocol stack.
      * @param channelOBserverSet
      *            - a {@link Set}<{@link IChannelObserver}> set of channel observers. Service channel life-cycle events
@@ -92,7 +92,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
-    public synchronized void registerServiceProxy(AbstractDataProxy serviceProxy,
+    public synchronized void registerServiceProxy(AbstractBridgeAdapter serviceProxy,
         final Set<IChannelObserver> channelObserverSet, int servicePort, ChannelOptions channelOptions)
         throws BridgeException
     {
@@ -159,7 +159,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * Attempt to register client proxy and connect with remote host.
      * 
      * @param clientProxy
-     *            - an {@link AbstractDataProxy} client data end-point which serves as a data sink and provides client
+     *            - an {@link AbstractBridgeAdapter} client data end-point which serves as a data sink and provides client
      *            specific protocol stack.
      * @param channelListenerSet
      *            - a {@link Set}<{@link IChannelObserver}> set of channel listeners. Service channel life-cycle events
@@ -174,7 +174,7 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
-    public synchronized void registerClientProxy(AbstractDataProxy clientProxy,
+    public synchronized void registerClientProxy(AbstractBridgeAdapter clientProxy,
         final Set<IChannelObserver> channelObserverSet, int remoteHostPort, String remoteHostIPv4,
         ChannelOptions channelOptions) throws BridgeException
     {

@@ -12,7 +12,7 @@ import game.core.util.NetworkUtils;
 import game.usn.bridge.api.listener.IChannelObserver;
 import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.pipeline.USNPipelineInitializer;
-import game.usn.bridge.proxy.AbstractDataProxy;
+import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -242,7 +242,7 @@ public abstract class AbstractBridgeProvider
                     if (future.isSuccess())
                     {
                         notifyObservers(observerSet,
-                            future.channel().pipeline().get(AbstractDataProxy.class).getName(),
+                            future.channel().pipeline().get(AbstractBridgeAdapter.class).getName(),
                             (InetSocketAddress) future.channel().remoteAddress(), true);
 
                         bridgeChannelSet.add(future.channel());
@@ -250,7 +250,7 @@ public abstract class AbstractBridgeProvider
                     else
                     {
                         notifyObservers(observerSet,
-                            future.channel().pipeline().get(AbstractDataProxy.class).getName(), null, false);
+                            future.channel().pipeline().get(AbstractBridgeAdapter.class).getName(), null, false);
                         LOG.error(ERROR_CONNECT, future.channel().remoteAddress());
                         return;
                     }
@@ -344,7 +344,7 @@ public abstract class AbstractBridgeProvider
                         // Guard bridge from observer exceptions.
                         try
                         {
-                            observer.notifyChannelDown(channel.pipeline().get(AbstractDataProxy.class).getName());
+                            observer.notifyChannelDown(channel.pipeline().get(AbstractBridgeAdapter.class).getName());
                         }
                         catch (NullPointerException npe)
                         {

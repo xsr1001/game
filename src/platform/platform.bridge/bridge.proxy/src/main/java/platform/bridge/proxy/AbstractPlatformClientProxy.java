@@ -7,7 +7,7 @@ package platform.bridge.proxy;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.api.proxy.IIdentifiable;
-import game.usn.bridge.proxy.AbstractDataProxy;
+import game.usn.bridge.proxy.AbstractBridgeAdapter;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +22,7 @@ import platform.core.api.exception.BridgeException;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public abstract class AbstractPlatformClientProxy extends AbstractDataProxy
+public abstract class AbstractPlatformClientProxy extends AbstractBridgeAdapter
 {
     // Request future map. Maps unique synchronous message id to its request future.
     private static ConcurrentHashMap<UUID, RequestFuture> requestFutureMap = new ConcurrentHashMap<UUID, RequestFuture>();

@@ -13,7 +13,7 @@ import game.usn.bridge.api.listener.IConnectionObserver;
 import game.usn.bridge.api.listener.IConnectionObserver.EConnectionState;
 import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
 import game.usn.bridge.pipeline.encoder.USNPacketEncoder;
-import game.usn.bridge.proxy.AbstractDataProxy;
+import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
@@ -66,17 +66,17 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     private static final String HANDLER_PROXY = "handler_proxy";
 
     // In/Out packet data end-point.
-    private AbstractDataProxy consumerProxy;
+    private AbstractBridgeAdapter consumerProxy;
 
     /**
      * Ctor.
      * 
      * @param consumerProxy
-     *            - an implementation of {@link AbstractDataProxy} that will define actual consumer end-point. All
+     *            - an implementation of {@link AbstractBridgeAdapter} that will define actual consumer end-point. All
      *            incoming packets will be routed to it. Proxy should contain consumer specific protocol object and
      *            optionally additional pipeline in and out handlers.
      */
-    public USNPipelineInitializer(AbstractDataProxy consumerProxy)
+    public USNPipelineInitializer(AbstractBridgeAdapter consumerProxy)
     {
         ArgsChecker.errorOnNull(consumerProxy, ARG_CONSUMER_PROXY);
         ArgsChecker.errorOnNull(consumerProxy.getProtocol(), ARG_CONSUMER_PROTOCOL);
@@ -188,9 +188,9 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     /**
      * Getter for abstract data proxy.
      * 
-     * @return - return {@link AbstractDataProxy} associated with this connection.
+     * @return - return {@link AbstractBridgeAdapter} associated with this connection.
      */
-    public AbstractDataProxy getConsumerProxy()
+    public AbstractBridgeAdapter getConsumerProxy()
     {
         return this.consumerProxy;
     }
