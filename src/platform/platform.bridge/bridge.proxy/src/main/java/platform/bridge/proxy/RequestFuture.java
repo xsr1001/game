@@ -1,48 +1,101 @@
 /**
  * @file RequestFuture.java
- * @brief <description>
+ * @brief Request future represents a result of an asynchronous request to a remote service.
  */
 
 package platform.bridge.proxy;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
-import game.usn.bridge.pipeline.ChannelOptions;
-import io.netty.channel.ChannelHandler;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import platform.core.api.exception.BridgeException;
 
+/**
+ * Request future represents a result of an asynchronous request to a remote service.
+ * 
+ * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+ *
+ */
 public class RequestFuture
 {
+    // Errors, args, messages.
+    private static final String ERROR_INTERRUPTED = "Interrupted exception raised while waiting for a response.";
+    private static final String ERROR_TIMEOUT = "Timeout received while waiting for a result.";
 
-    // Provided instance of protocol to use.
-    private AbstractUSNProtocol consumerProtocol;
+    // Asynchronous operation result
+    private AbstractPacket result;
 
-    // Proxy implementation specific in and out handler lists.
-    private List<ChannelHandler> inHandlers;
-    private List<ChannelHandler> outHandlers;
+    // Wait mechanism to block for a result..
+    private CountDownLatch countDownLatch;
 
-    // Provided channel options specific per proxy.
-    private ChannelOptions channelOptions;
-
-    public RequestFuture(UUID messageId)
+    /**
+     * Constructor.
+     */
+    public RequestFuture()
     {
-
+        result = null;
+        countDownLatch = new CountDownLatch(1);
     }
 
+    /**
+     * Retrieve a result after it has been received. Will wait indefinitely for a result.
+     * 
+     * @return - a {@link AbstractPacket} received result.
+     * @throws BridgeException
+     *             - throws {@link BridgeException} if thread is interrupted.
+     */
     public AbstractPacket get() throws BridgeException
     {
-        return null;
+        try
+        {
+            countDownLatch.await();
+            return result;
+        }
+        catch (InterruptedException ie)
+        {
+            throw new BridgeException(ERROR_INTERRUPTED, ie);
+        }
     }
 
+    /**
+     * Retrieve a result after it has been received. Will wait for a specific amount before throwing exception.
+     * 
+     * @param timeout
+     *            - amount of time to wait for result.
+     * @param timeoutUnit
+     *            - a {@link TimeUnit} unit of time to wait for result.
+     * @return - a {@link AbstractPacket} received result.
+     * @throws BridgeException
+     *             - throws {@link BridgeException} if thread is interrupted or if block operation has received a
+     *             timeout.
+     */
     public AbstractPacket get(int timeout, TimeUnit timeoutUnit) throws BridgeException
     {
-        return null;
+        try
+        {
+            if (!countDownLatch.await(timeout, timeoutUnit))
+            {
+                throw new BridgeException(ERROR_TIMEOUT);
+            }
+            return result;
+        }
+        catch (InterruptedException ie)
+        {
+            throw new BridgeException(ERROR_INTERRUPTED, ie);
+        }
     }
 
-    public void response(AbstractPacket packet);
+    /**
+     * Receive a result.
+     * 
+     * @param result
+     *            - a {@link AbstractPacket} asynchronous operation result.
+     */
+    public void result(AbstractPacket result)
+    {
+        this.result = result;
+        countDownLatch.countDown();
+    }
 }

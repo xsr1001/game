@@ -5,7 +5,7 @@
 
 package game.usn.bridge.api.test.protocol;
 
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
+import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 import game.usn.bridge.api.test.protocol.data.TestPacket;
 import game.usn.bridge.api.test.protocol.data.TestPacket2;
 import game.usn.bridge.api.test.protocol.data.TestProtocol1;
@@ -45,7 +45,7 @@ public class TestUSNProtocol
     public void testFrameSize()
     {
         Assert.assertEquals(new TestProtocol1().getFrameLengthHeaderSize(),
-            AbstractUSNProtocol.DEFAULT_FRAME_LENGTH_HEADER_SIZE);
+            AbstractPlatformProtocol.DEFAULT_FRAME_LENGTH_HEADER_SIZE);
         Assert.assertEquals(new TestProtocol2(666).getFrameLengthHeaderSize(), 666);
     }
 

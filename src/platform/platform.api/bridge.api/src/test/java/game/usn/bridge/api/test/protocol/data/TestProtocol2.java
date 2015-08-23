@@ -5,7 +5,7 @@
 
 package game.usn.bridge.api.test.protocol.data;
 
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
+import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
  * Test protocol instance 2. Register some consumer specific packets.
@@ -13,7 +13,7 @@ import game.usn.bridge.api.protocol.AbstractUSNProtocol;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class TestProtocol2 extends AbstractUSNProtocol
+public class TestProtocol2 extends AbstractPlatformProtocol
 {
     public TestProtocol2(int frameSize)
     {

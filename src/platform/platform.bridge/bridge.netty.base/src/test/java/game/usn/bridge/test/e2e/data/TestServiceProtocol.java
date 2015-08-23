@@ -5,7 +5,7 @@
 
 package game.usn.bridge.test.e2e.data;
 
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
+import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
  * Test service protocol for unit testing.
@@ -13,7 +13,7 @@ import game.usn.bridge.api.protocol.AbstractUSNProtocol;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class TestServiceProtocol extends AbstractUSNProtocol
+public class TestServiceProtocol extends AbstractPlatformProtocol
 {
     /**
      * Register test packets.

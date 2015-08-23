@@ -18,7 +18,7 @@ import javax.xml.ws.ProtocolException;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public abstract class AbstractUSNProtocol
+public abstract class AbstractPlatformProtocol
 {
     // Errors, args, messages.
     private static final String ERROR_UNKNOWN_PACKET_CLASS = "Provided concrete packet class: [%s] has not been registered.";
@@ -39,7 +39,7 @@ public abstract class AbstractUSNProtocol
     /**
      * Ctor.
      */
-    protected AbstractUSNProtocol()
+    protected AbstractPlatformProtocol()
     {
         this(DEFAULT_FRAME_LENGTH_HEADER_SIZE);
     }
@@ -50,7 +50,7 @@ public abstract class AbstractUSNProtocol
      * @param frameLengthHeaderSize
      *            - number of ints allocated for length header of the frame message.
      */
-    protected AbstractUSNProtocol(int frameLengthHeaderSize)
+    protected AbstractPlatformProtocol(int frameLengthHeaderSize)
     {
         this.idToPacketMap = new HashMap<Integer, Class<? extends AbstractPacket>>();
         this.packetToIdMap = new HashMap<Class<? extends AbstractPacket>, Integer>();

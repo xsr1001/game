@@ -5,7 +5,7 @@
 
 package game.usn.bridge.api.test.protocol.data;
 
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
+import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
  * Test protocol instance 1.
@@ -13,5 +13,5 @@ import game.usn.bridge.api.protocol.AbstractUSNProtocol;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class TestProtocol1 extends AbstractUSNProtocol
+public class TestProtocol1 extends AbstractPlatformProtocol
 {}

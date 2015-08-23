@@ -7,9 +7,9 @@ package game.usn.bridge.api.proxy;
 
 import java.util.UUID;
 
-public interface IIdentifiable
+public interface ITransportIdentifiable
 {
-    void setId(UUID id);
+    void setTransportId(UUID id);
 
-    UUID getId();
+    UUID getTransportId();
 }

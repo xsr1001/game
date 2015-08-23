@@ -8,7 +8,7 @@ package game.usn.bridge.proxy;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.USNBridgeManager;
 import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
+import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 import game.usn.bridge.pipeline.ChannelOptions;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -22,16 +22,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import platform.core.api.exception.BridgeException;
 
 /**
- * Abstract bridge adapter provides basic bridge infrastructure for platform proxies to use. It is an bridge layer
- * binding with netty network base.
+ * Abstract bridge adapter provides basic bridge infrastructure for platform proxies to use. It is a bridge layer
+ * binding for netty network base.
  * 
  * <p>
- * Abstract bridge adapter is an application level adapter, enforcing selective implementation of netty channel handler
- * adapter capabilities, defined in {@link ChannelInboundHandlerAdapter}.
+ * Abstract bridge adapter is a bridge level adapter, providing binfing with netty network base, defined in
+ * {@link ChannelInboundHandlerAdapter}.
  * </p>
  * <p>
- * Abstract bridge adapter enforces a bridge layer specific proxy to implement basic channel management logic, defined
- * in {@link IChannelObserver}.
+ * Abstract bridge adapter enforces a proxy to implement basic channel management logic, defined in
+ * {@link IChannelObserver}.
  * </p>
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
@@ -57,17 +57,18 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
      * Initialize data proxy by registering it with network base.
      * 
      * @param serviceIPv4Address
-     *            - a {@link String} service IPv4 address to register data proxy with. Required only if registering
+     *            - a {@link String} service IPv4 address to register data proxy with. Required only if registering a
      *            client proxy.
      * @param servicePort
      *            - a {@link Integer} service port to register data proxy with.
      * @throws BridgeException
      *             - throws {@link BridgeException} on data proxy initialization failure.
      */
-    protected void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
+    public void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
     {
         ArgsChecker.errorOnNull(getChannelOptions(), ARG_CHANNEL_OPTIONS);
 
+        // Add self as channel observer to receive channel life-cycle events.
         Set<IChannelObserver> channelObserverSet = new HashSet<IChannelObserver>();
         if (getChannelObserverSet() != null)
         {
@@ -97,7 +98,7 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
      * @throws BridgeException
      *             - throws {@link BridgeException} on release failure.
      */
-    protected void release() throws BridgeException
+    public void release() throws BridgeException
     {
         if (initialized.get())
         {
@@ -121,7 +122,7 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
     public abstract void notifyChannelDown(String proxyName);
 
     /**
-     * Retrieve proxy implementation specific channel options.
+     * Retrieve proxy specific channel options.
      * 
      * @return - a {@link ChannelOptions} object, defining basic options to initialize network channel with.
      */
@@ -135,32 +136,36 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
     public abstract String getName();
 
     /**
-     * Retrieve the proxy implementation specific protocol.
+     * Retrieve the proxy specific platform protocol.
      * 
-     * @return - an instance of {@link AbstractUSNProtocol}.
+     * @return - an instance of {@link AbstractPlatformProtocol}.
      */
-    public abstract AbstractUSNProtocol getProtocol();
+    public abstract AbstractPlatformProtocol getProtocol();
 
     /**
-     * Provide proxy implementation specific list of in handlers.
+     * Provide proxy specific list of in handlers.
      * 
-     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy implementation specific in
-     *         handlers.
+     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy specific in handlers.
      */
     public abstract List<ChannelHandler> getInHandlerList();
 
     /**
-     * Provide proxy implementation specific list of out handlers.
+     * Provide proxy specific list of out handlers.
      * 
-     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy implementation specific out
-     *         handlers.
+     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy specific out handlers.
      */
     public abstract List<ChannelHandler> getOutHandlerList();
 
+    /**
+     * Retrieve proxy specific channel observer set.
+     * 
+     * @return - a {@link List} of {@link IChannelObserver} objects, representing observers to network channel
+     *         life-cycle events.
+     */
     public abstract Set<IChannelObserver> getChannelObserverSet();
 
     @Override
-    public String toString()
+    public final String toString()
     {
         return getName();
     }

@@ -9,7 +9,7 @@ import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.usn.bridge.api.protocol.AbstractPacket;
-import game.usn.bridge.api.protocol.AbstractUSNProtocol;
+import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
@@ -36,15 +36,15 @@ public final class USNPacketDecoder extends MessageToMessageDecoder<ByteBuf>
     private static final String ARG_CONSUMER_PROTOCOL = "consumerProtocol";
 
     // Consumer specific protocol instance. It defines in and out supported message types.
-    private AbstractUSNProtocol consumerProtocol;
+    private AbstractPlatformProtocol consumerProtocol;
 
     /**
      * Ctor.
      * 
      * @param consumerProtocol
-     *            - instance of {@link AbstractUSNProtocol} that is consumer specific.
+     *            - instance of {@link AbstractPlatformProtocol} that is consumer specific.
      */
-    public USNPacketDecoder(AbstractUSNProtocol consumerProtocol)
+    public USNPacketDecoder(AbstractPlatformProtocol consumerProtocol)
     {
         ArgsChecker.errorOnNull(consumerProtocol, ARG_CONSUMER_PROTOCOL);
         this.consumerProtocol = consumerProtocol;

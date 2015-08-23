@@ -6,8 +6,7 @@
 package platform.bridge.proxy;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
-import game.usn.bridge.api.proxy.IIdentifiable;
-import game.usn.bridge.proxy.AbstractBridgeAdapter;
+import game.usn.bridge.api.proxy.ITransportIdentifiable;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,10 +21,13 @@ import platform.core.api.exception.BridgeException;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public abstract class AbstractPlatformClientProxy extends AbstractBridgeAdapter
+public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
 {
-    // Request future map. Maps unique synchronous message id to its request future.
-    private static ConcurrentHashMap<UUID, RequestFuture> requestFutureMap = new ConcurrentHashMap<UUID, RequestFuture>();
+    // Default wait time for a synchronous response.
+    private static final int DEFAULT_RESPONSE_WAIT_TIME_SEC = 2;
+
+    // Request future map, mapping unique packet id to its request future.
+    private ConcurrentHashMap<UUID, RequestFuture> requestFutureMap;
 
     /**
      * Constructor.
@@ -33,42 +35,46 @@ public abstract class AbstractPlatformClientProxy extends AbstractBridgeAdapter
     protected AbstractPlatformClientProxy()
     {
         super();
+        requestFutureMap = new ConcurrentHashMap<UUID, RequestFuture>();
     }
 
     /**
-     * Synchronously send a packet to remote host. Invoking this method will block until a response has been received or
-     * until a timeout occurs.
+     * Synchronously send data to remote service. Invoking this method will block until a response has been received or
+     * a timeout occurs.
      * 
-     * @param identifiablePacket
+     * @param packet
      *            - a source packet to send. Must extend {@link AbstractPacket} to be compatible with protocol and
-     *            {@link IIdentifiable} to provide a unique message id.
-     * @return - receive response. Response must be a complex {@link AbstractPacket} in accordance with the protocol.
+     *            implement {@link ITransportIdentifiable} to provide a unique transport packet id.
+     * @return - a {@link AbstractPacket} received response.
      * @throws BridgeException
-     *             - throws {@link BridgeException} on network write failure or on request timeout.
+     *             - throws {@link BridgeException} on network send failure or on response wait timeout.
      */
-    protected final <T extends AbstractPacket & IIdentifiable> AbstractPacket send(T identifiablePacket)
+    protected final <T extends AbstractPacket & ITransportIdentifiable> AbstractPacket send(T packet)
         throws BridgeException
     {
-        UUID packetId = UUID.randomUUID();
-        identifiablePacket.setId(packetId);
+        UUID packetTransportId = UUID.randomUUID();
+        packet.setTransportId(packetTransportId);
 
-        RequestFuture requestFuture = new RequestFuture(packetId);
-        requestFutureMap.put(packetId, requestFuture);
+        RequestFuture requestFuture = new RequestFuture();
+        requestFutureMap.put(packetTransportId, requestFuture);
 
         try
         {
-            super.sendPacket(identifiablePacket);
-            return requestFuture.get(2, TimeUnit.SECONDS);
+            super.sendPacket(packet);
+            return requestFuture.get(DEFAULT_RESPONSE_WAIT_TIME_SEC, TimeUnit.SECONDS);
         }
         catch (BridgeException be)
         {
-            requestFutureMap.remove(requestFuture);
             throw be;
+        }
+        finally
+        {
+            requestFutureMap.remove(requestFuture);
         }
     }
 
     /**
-     * Notify remote service with data. This call is purely asynchronous.
+     * Asynchronously send data to remote service. This call is purely asynchronous and will not block.
      * 
      * @param packet
      *            - a source {@link AbstractPacket} to notify remote service with.
@@ -81,16 +87,16 @@ public abstract class AbstractPlatformClientProxy extends AbstractBridgeAdapter
     }
 
     /**
-     * {@inheritDoc} Determine if packet has been received for a synchronous request. Notify the future if synchronous
-     * request and forward to upstream packet handler if asynchronous.
+     * {@inheritDoc} Determine if packet received originated from a synchronous request. If yes, notify the future with
+     * result otherwise notify proxy with data.
      */
     @Override
-    protected void receive(AbstractPacket abstractPacket)
+    protected final void receive(AbstractPacket abstractPacket)
     {
         UUID packetId = null;
-        if (abstractPacket instanceof IIdentifiable)
+        if (abstractPacket instanceof ITransportIdentifiable)
         {
-            packetId = ((IIdentifiable) abstractPacket).getId();
+            packetId = ((ITransportIdentifiable) abstractPacket).getTransportId();
         }
 
         if (packetId == null)
@@ -103,7 +109,7 @@ public abstract class AbstractPlatformClientProxy extends AbstractBridgeAdapter
             RequestFuture future = requestFutureMap.get(packetId);
             if (future != null)
             {
-                future.response(abstractPacket);
+                future.result(abstractPacket);
             }
         }
     }
