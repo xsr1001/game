@@ -3,7 +3,7 @@
  * @brief Abstract client proxy defines basic client proxy functionality.
  */
 
-package platform.bridge.proxy;
+package platform.bridge.proxy.client;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.proxy.AbstractBridgeAdapter;
@@ -87,6 +87,20 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     }
 
     @Override
+    public final void channelActive(ChannelHandlerContext ctx) throws Exception
+    {
+        super.channelActive(ctx);
+        channel = ctx.channel();
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception
+    {
+        super.channelInactive(ctx);
+        channelConnected.set(false);
+    }
+
+    @Override
     public void notifyChannelUp(String proxyName, InetSocketAddress address)
     {
         if (proxyName.compareTo(getName()) == 0)
@@ -102,19 +116,5 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
         {
             channelConnected.set(false);
         }
-    }
-
-    @Override
-    public final void channelActive(ChannelHandlerContext ctx) throws Exception
-    {
-        super.channelActive(ctx);
-        channel = ctx.channel();
-    }
-
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception
-    {
-        super.channelInactive(ctx);
-        channelConnected.set(false);
     }
 }

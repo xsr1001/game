@@ -3,7 +3,7 @@
  * @brief Request future represents a result of an asynchronous request to a remote service.
  */
 
-package platform.bridge.proxy;
+package platform.bridge.proxy.client;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
 

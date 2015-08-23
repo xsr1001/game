@@ -3,7 +3,7 @@
  * @brief Abstract platform client proxy provides a basic proxy functionality for interacting with a remote service.
  */
 
-package platform.bridge.proxy;
+package platform.bridge.proxy.client;
 
 import game.usn.bridge.api.protocol.AbstractPacket;
 import game.usn.bridge.api.proxy.ITransportIdentifiable;
