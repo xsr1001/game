@@ -79,8 +79,8 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * Attempt to register service proxy and start the service.
      * 
      * @param serviceProxy
-     *            - an {@link AbstractBridgeAdapter} service data end-point which serves as a data sink and provides service
-     *            specific protocol stack.
+     *            - an {@link AbstractBridgeAdapter} service data end-point which serves as a data sink and provides
+     *            service specific protocol stack.
      * @param channelOBserverSet
      *            - a {@link Set}<{@link IChannelObserver}> set of channel observers. Service channel life-cycle events
      *            will be notified to provided observers. It is preferred to provide at least one consumer specific
@@ -159,8 +159,8 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
      * Attempt to register client proxy and connect with remote host.
      * 
      * @param clientProxy
-     *            - an {@link AbstractBridgeAdapter} client data end-point which serves as a data sink and provides client
-     *            specific protocol stack.
+     *            - an {@link AbstractBridgeAdapter} client data end-point which serves as a data sink and provides
+     *            client specific protocol stack.
      * @param channelListenerSet
      *            - a {@link Set}<{@link IChannelObserver}> set of channel listeners. Service channel life-cycle events
      *            will be notified to provided listeners. It is preferred to provide at least one consumer specific
@@ -198,20 +198,22 @@ public final class USNBridgeManager extends AbstractBridgeProvider implements IC
         }
 
         // Check if given proxy has already been registered. Notify observers if already registered.
+        boolean contains = false;
         try
         {
             this.rwLock.readLock().lock();
-            if (this.proxySet.contains(clientProxy.getName()))
-            {
-                LOG.warn(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER2, clientProxy));
-
-                notifyObservers(channelObserverSet, clientProxy.getName(), null, false);
-                return;
-            }
+            contains = this.proxySet.contains(clientProxy.getName());
         }
         finally
         {
             this.rwLock.readLock().unlock();
+        }
+
+        if (contains)
+        {
+            LOG.warn(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER2, clientProxy));
+
+            throw new BridgeException(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER2, clientProxy));
         }
 
         LOG.info(MSG_NEW_PROXY, PROXY_REGISTER2, clientProxy.getName(),

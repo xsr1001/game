@@ -91,6 +91,7 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     {
         super.channelActive(ctx);
         channel = ctx.channel();
+        channelConnected.set(true);
     }
 
     @Override
@@ -101,20 +102,17 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     }
 
     @Override
-    public void notifyChannelUp(String proxyName, InetSocketAddress address)
-    {
-        if (proxyName.compareTo(getName()) == 0)
-        {
-            channelConnected.set(true);
-        }
-    }
-
-    @Override
     public void notifyChannelDown(String proxyName)
     {
         if (proxyName.compareTo(getName()) == 0)
         {
             channelConnected.set(false);
         }
+    }
+
+    @Override
+    public final void notifyChannelUp(String proxyName, InetSocketAddress address)
+    {
+        // No need to implement. Same as channelActive for client connection.
     }
 }
