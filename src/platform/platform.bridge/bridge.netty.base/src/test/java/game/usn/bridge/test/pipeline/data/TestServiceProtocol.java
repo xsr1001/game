@@ -5,7 +5,7 @@
 
 package game.usn.bridge.test.pipeline.data;
 
-import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
  * Test service protocol for unit testing.

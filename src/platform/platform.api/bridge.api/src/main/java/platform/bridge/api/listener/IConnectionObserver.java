@@ -3,7 +3,7 @@
  * @brief IConnectionObserver for client connection and disconnection events.
  */
 
-package game.usn.bridge.api.listener;
+package platform.bridge.api.listener;
 
 /**
  * Observer for client connection and disconnection events. Should only be used in service context. There is no need to

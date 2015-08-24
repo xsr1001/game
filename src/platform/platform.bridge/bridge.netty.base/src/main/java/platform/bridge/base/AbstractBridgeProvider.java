@@ -1,24 +1,21 @@
 /**
  * @file AbstractBridgeProvider.java
- * @brief AbstractBridgeProvider attempts to provide base functionality for unified service network.
+ * @brief AbstractBridgeProvider attempts to provide base functionality for network base operations
  */
 
-package game.usn.bridge;
+package platform.bridge.base;
 
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import game.core.util.NetworkUtils;
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.pipeline.ChannelOptions;
-import game.usn.bridge.pipeline.USNPipelineInitializer;
-import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelException;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.epoll.EpollEventLoopGroup;
@@ -37,11 +34,15 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.base.pipeline.ChannelOptions;
+import platform.bridge.base.pipeline.PlatformPipelineInitializer;
+import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
- * Abstract bridge provider provides base functionality for providing unified service network bridge functionality for
- * various consumers. It provides functionality for initializing consumer specific protocol stacks.
+ * Abstract bridge provider provides base functionality for network base operations for various consumers. It provides
+ * functionality for initializing consumer specific protocol stacks.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -58,7 +59,7 @@ public abstract class AbstractBridgeProvider
     private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
     private static final String ARG_REMOTE_ADDRESS = "remoteAddress";
     private static final String ERROR_SOCKET_BIND = "Error binding server socket.";
-    private static final String ERROR_CONNECT = "Error connecting with remote host.";
+    private static final String ERROR_CONNECT = "Error connecting with remote host: [%s].";
     private static final String ERROR_ILLEGAL_ARGUMENT = "Illegal argument provided.";
     private static final String ERROR_UNKNOWN_HOST = "Cannot retrieve hostname for socket bind.";
     private static final String ERROR_GENERAL_EXCEPTION = "General exception thrown.";
@@ -93,18 +94,18 @@ public abstract class AbstractBridgeProvider
      */
     protected AbstractBridgeProvider(int workerGroupSize)
     {
-        this.bridgeChannelSet = new HashSet<Channel>();
-        this.workerGroup = generateEventLoopGroup(workerGroupSize);
+        bridgeChannelSet = new HashSet<Channel>();
+        workerGroup = generateEventLoopGroup(workerGroupSize);
     }
 
     /**
      * Creates and binds a service end-point with the provided service USN stack. This method presumes that service has
-     * provided extended {@link USNPipelineInitializer} with the service specific stack and protocol handlers.
+     * provided extended {@link PlatformPipelineInitializer} with the service specific stack and protocol handlers.
      * 
      * @param servicePort
      *            - a valid service port to bind the service on or 0 to retrieve a wild-card port.
      * @param pipelineInitializer
-     *            - an instance of {@link USNPipelineInitializer} to initialize USN service stack to incoming
+     *            - an instance of {@link PlatformPipelineInitializer} to initialize platform service stack to incoming
      *            connections.
      * @param observerSet
      *            - a {@link Set}<{@link IChannelObserver}> to notify with server socket channel life-cycle events.
@@ -113,7 +114,7 @@ public abstract class AbstractBridgeProvider
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
-    protected void provideServiceBridge(int servicePort, final USNPipelineInitializer pipelineInitializer,
+    protected void provideServiceBridge(int servicePort, final PlatformPipelineInitializer pipelineInitializer,
         final Set<IChannelObserver> observerSet, final ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer,
@@ -129,19 +130,17 @@ public abstract class AbstractBridgeProvider
             ServerBootstrap serverBootstrap = createBaseServiceUSNStack(
                 new InetSocketAddress(Inet4Address.getLocalHost(), servicePort), this.workerGroup, pipelineInitializer);
 
-            // Add server listeners.
-            serverBootstrap.attr(USNPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
+            // Add server channel listeners.
+            serverBootstrap.attr(PlatformPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
                 observerSet));
 
             // Add channel options.
-            serverBootstrap.childAttr(USNPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
+            serverBootstrap.childAttr(PlatformPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
 
-            /**
-             * TODO: socket and netty options??
-             */
-            // serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
-            // serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
-            // serverBootstrap.childOption(ChannelOption.SO_LINGER, DEFAULT_SOCKET_LINGER_SEC);
+
+            serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
+            serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
+            serverBootstrap.childOption(ChannelOption.SO_LINGER, 5);
 
             // Bind and add listener.
             serverBootstrap.bind().addListener(new ChannelFutureListener() {
@@ -159,10 +158,7 @@ public abstract class AbstractBridgeProvider
                     else
                     {
                         LOG.error(ERROR_SOCKET_BIND);
-
                         notifyObservers(observerSet, pipelineInitializer.getConsumerProxy().getName(), null, false);
-
-                        return;
                     }
                 }
             });
@@ -190,12 +186,12 @@ public abstract class AbstractBridgeProvider
 
     /**
      * Creates an outgoing channel and connects with the remote host. This method presumes that client has provided
-     * extended {@link USNPipelineInitializer} with the client specific stack and protocol handlers.
+     * extended {@link PlatformPipelineInitializer} with the client specific stack and protocol handlers.
      * 
      * @param remoteAddress
      *            - a valid remote-host {@link SocketAddress}.
      * @param pipelineInitializer
-     *            - an instance of {@link USNPipelineInitializer} to initialize USN client stack for outgoing
+     *            - an instance of {@link PlatformPipelineInitializer} to initialize platform client stack for outgoing
      *            connection.
      * @param observerSet
      *            - a {@link Set}<{@link IChannelObserver}> to notify with client socket channel life-cycle events.
@@ -205,7 +201,7 @@ public abstract class AbstractBridgeProvider
      *             - throw {@link BridgeException} on error.
      */
     protected void provideClientBridge(final SocketAddress remoteAddress,
-        final USNPipelineInitializer pipelineInitializer, final Set<IChannelObserver> observerSet,
+        final PlatformPipelineInitializer pipelineInitializer, final Set<IChannelObserver> observerSet,
         final ChannelOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_PIPELINE_INITIALIZER, pipelineInitializer, ARG_CHANNEL_OPTIONS, channelOptions);
@@ -217,21 +213,18 @@ public abstract class AbstractBridgeProvider
             ArgsChecker.errorOnNull(remoteAddress, ARG_REMOTE_ADDRESS);
             ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
 
-            Bootstrap clientBootstrap = createBaseClientUSNStack(remoteAddress, this.workerGroup, pipelineInitializer);
+            Bootstrap clientBootstrap = createBaseClientUSNStack(remoteAddress, workerGroup, pipelineInitializer);
 
-            // Add client listeners.
-            clientBootstrap.attr(USNPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
+            // Add channel listeners.
+            clientBootstrap.attr(PlatformPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
                 observerSet));
 
             // Add channel options.
-            clientBootstrap.attr(USNPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
+            clientBootstrap.attr(PlatformPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
 
-            /**
-             * TODO: socket and netty options??
-             */
-            // serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
-            // serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
-            // serverBootstrap.childOption(ChannelOption.SO_LINGER, DEFAULT_SOCKET_LINGER_SEC);
+            clientBootstrap.option(ChannelOption.TCP_NODELAY, true);
+            clientBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+            clientBootstrap.option(ChannelOption.SO_LINGER, 5);
 
             // Connect and add listener.
             clientBootstrap.connect().addListener(new ChannelFutureListener() {
@@ -251,7 +244,7 @@ public abstract class AbstractBridgeProvider
                     {
                         notifyObservers(observerSet,
                             future.channel().pipeline().get(AbstractBridgeAdapter.class).getName(), null, false);
-                        LOG.error(ERROR_CONNECT, future.channel().remoteAddress());
+                        LOG.error(String.format(ERROR_CONNECT, future.channel().remoteAddress()));
                         return;
                     }
                 }
@@ -282,13 +275,13 @@ public abstract class AbstractBridgeProvider
      * @param workerGroup
      *            - an initialized {@link EventLoopGroup} for handling I/O events.
      * @param pipelineInitializer
-     *            - an instance of {@link USNPipelineInitializer} to provide new network stack for incoming connections.
+     *            - an instance of {@link PlatformPipelineInitializer} to provide new network stack for incoming connections.
      *            Service should have extended initializer by providing service specific pipeline items and protocol.
      * 
      * @return - a ready to bind {@link ServerBootstrap}.
      */
     private ServerBootstrap createBaseServiceUSNStack(SocketAddress address, EventLoopGroup workerGroup,
-        final USNPipelineInitializer pipelineInitializer)
+        final PlatformPipelineInitializer pipelineInitializer)
     {
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.channel(generateServerChannel());
@@ -307,13 +300,13 @@ public abstract class AbstractBridgeProvider
      * @param workerGroup
      *            - an initialized {@link EventLoopGroup} for handling I/O events.
      * @param pipelineInitializer
-     *            - an instance of {@link USNPipelineInitializer} to provide new network stack for remote connections.
+     *            - an instance of {@link PlatformPipelineInitializer} to provide new network stack for remote connections.
      *            Client should have extended initializer by providing client specific pipeline items and protocol.
      * 
      * @return - a ready to connect {@link Bootstrap}.
      */
     private Bootstrap createBaseClientUSNStack(SocketAddress address, EventLoopGroup workerGroup,
-        final USNPipelineInitializer pipelineInitializer)
+        final PlatformPipelineInitializer pipelineInitializer)
     {
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.channel(generateClientChannel());
@@ -336,7 +329,7 @@ public abstract class AbstractBridgeProvider
         {
             try
             {
-                Set<IChannelObserver> observerSet = channel.attr(USNPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY).get();
+                Set<IChannelObserver> observerSet = channel.attr(PlatformPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY).get();
                 if (observerSet != null)
                 {
                     for (IChannelObserver observer : observerSet)
@@ -378,7 +371,7 @@ public abstract class AbstractBridgeProvider
      * Notify channel observers with the bridge operation result.
      * 
      * @param observerSet
-     *            - a {@link Set}<{@link IChannelObserver}> to notify with client socket channel life-cycle events.
+     *            - a {@link Set} of{@link IChannelObserver} objects representing observer to notify.
      * @param proxyName
      *            - a {@link String} unique proxy name.
      * @param address

@@ -5,13 +5,12 @@
 
 package platform.bridge.proxy.client;
 
-import game.usn.bridge.api.protocol.AbstractPacket;
-import game.usn.bridge.api.proxy.ITransportIdentifiable;
-
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import platform.bridge.api.protocol.AbstractPacket;
+import platform.bridge.api.proxy.ITransportIdentifiable;
 import platform.core.api.exception.BridgeException;
 
 /**

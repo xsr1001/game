@@ -3,17 +3,17 @@
  * @brief ChannelOptions provides basic channel and connection options.
  */
 
-package game.usn.bridge.pipeline;
-
-import game.usn.bridge.api.listener.IConnectionObserver;
-import game.usn.bridge.util.USNBridgeUtil;
+package platform.bridge.base.pipeline;
 
 import java.util.HashSet;
 import java.util.Set;
 
+import platform.bridge.api.listener.IConnectionObserver;
+import platform.bridge.base.util.PlatformBridgeUtil;
+
 /**
  * ChannelOptions. Provides basic channel and connection options. This is just a container for various options, it does
- * not attempt to validate any data. Refer to {@link USNBridgeUtil#validateChannelOptions(ChannelOptions, boolean)} for
+ * not attempt to validate any data. Refer to {@link PlatformBridgeUtil#validateChannelOptions(ChannelOptions, boolean)} for
  * options validation.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
@@ -38,7 +38,7 @@ public class ChannelOptions
      */
     public ChannelOptions()
     {
-        this.readTimeOutChannelExpirationSec = -1;
+        readTimeOutChannelExpirationSec = -1;
     }
 
     /**

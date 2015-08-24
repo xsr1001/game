@@ -3,7 +3,7 @@
  * @brief AbstractPacket represents base protocol packet type for all protocol implementations.
  */
 
-package game.usn.bridge.api.protocol;
+package platform.bridge.api.protocol;
 
 import io.netty.buffer.ByteBuf;
 

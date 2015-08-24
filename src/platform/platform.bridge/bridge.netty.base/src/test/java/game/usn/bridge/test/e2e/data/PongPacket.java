@@ -5,7 +5,7 @@
 
 package game.usn.bridge.test.e2e.data;
 
-import game.usn.bridge.api.protocol.AbstractPacket;
+import platform.bridge.api.protocol.AbstractPacket;
 import io.netty.buffer.ByteBuf;
 
 public class PongPacket extends AbstractPacket

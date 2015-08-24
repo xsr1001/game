@@ -3,13 +3,9 @@
  * @brief Abstract bridge adapter provides basic bridge infrastructure for platform proxies to use.
  */
 
-package game.usn.bridge.proxy;
+package platform.bridge.base.proxy;
 
 import game.core.util.ArgsChecker;
-import game.usn.bridge.USNBridgeManager;
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
-import game.usn.bridge.pipeline.ChannelOptions;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -19,6 +15,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.base.PlatformBridgeManager;
+import platform.bridge.base.pipeline.ChannelOptions;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -64,7 +64,7 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
      * @throws BridgeException
      *             - throws {@link BridgeException} on data proxy initialization failure.
      */
-    public void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
+    protected void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
     {
         ArgsChecker.errorOnNull(getChannelOptions(), ARG_CHANNEL_OPTIONS);
 
@@ -80,12 +80,12 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
         {
             if (getChannelOptions().isServer())
             {
-                USNBridgeManager.getInstance().registerServiceProxy(this, channelObserverSet, servicePort,
+                PlatformBridgeManager.getInstance().registerServiceProxy(this, channelObserverSet, servicePort,
                     getChannelOptions());
             }
             else
             {
-                USNBridgeManager.getInstance().registerClientProxy(this, channelObserverSet, servicePort,
+                PlatformBridgeManager.getInstance().registerClientProxy(this, channelObserverSet, servicePort,
                     serviceIPv4Address, getChannelOptions());
             }
             initialized.set(true);
@@ -98,11 +98,11 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
      * @throws BridgeException
      *             - throws {@link BridgeException} on release failure.
      */
-    public void release() throws BridgeException
+    protected void release() throws BridgeException
     {
         if (initialized.get())
         {
-            // TODO: add unregister hook to network base.
+            PlatformBridgeManager.getInstance().unregisterProxy(this);
             initialized.set(false);
         }
     }

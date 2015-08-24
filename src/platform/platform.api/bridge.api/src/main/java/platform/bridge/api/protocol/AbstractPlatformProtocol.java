@@ -1,9 +1,9 @@
 /**
- * @file AbstractUSNProtocol.java
+ * @file AbstractPlatformProtocol.java
  * @brief Base protocol mapping.
  */
 
-package game.usn.bridge.api.protocol;
+package platform.bridge.api.protocol;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,8 +12,8 @@ import java.util.Map.Entry;
 import javax.xml.ws.ProtocolException;
 
 /**
- * Abstract USN protocol provides base protocol functionality and mapping for all consumer specific protocols. Concrete
- * protocol implementations should add their own specific packet mapping.
+ * Abstract Platform protocol provides base protocol functionality and mapping for all consumer specific protocols.
+ * Concrete protocol implementations should add their own specific packet mapping.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -57,7 +57,7 @@ public abstract class AbstractPlatformProtocol
         this.frameLengthHeaderSize = frameLengthHeaderSize;
 
         // Register base USN packets.
-        registerBaseUSNPackets();
+        registerBasePlatformPackets();
     }
 
     /**
@@ -67,15 +67,15 @@ public abstract class AbstractPlatformProtocol
      */
     public int getFrameLengthHeaderSize()
     {
-        return this.frameLengthHeaderSize;
+        return frameLengthHeaderSize;
     }
 
     /**
      * Register base USN packets that all consumer protocols should inherit.
      */
-    private void registerBaseUSNPackets()
+    private void registerBasePlatformPackets()
     {
-
+        // TODO.
     }
 
     /**
@@ -91,12 +91,12 @@ public abstract class AbstractPlatformProtocol
     protected final synchronized void registerPacket(int packetId, Class<? extends AbstractPacket> packetClass)
         throws ProtocolException
     {
-        if (this.idToPacketMap.containsKey(packetId) || this.packetToIdMap.containsKey(packetClass))
+        if (idToPacketMap.containsKey(packetId) || packetToIdMap.containsKey(packetClass))
         {
             throw new ProtocolException(String.format(ERROR_PACKET_ALREADY_REGISTERED, packetClass.getName()));
         }
-        this.idToPacketMap.put(packetId, packetClass);
-        this.packetToIdMap.put(packetClass, packetId);
+        idToPacketMap.put(packetId, packetClass);
+        packetToIdMap.put(packetClass, packetId);
     }
 
     /**
@@ -106,7 +106,7 @@ public abstract class AbstractPlatformProtocol
      */
     protected final int getCurrentRegisteredPacketCnt()
     {
-        return this.idToPacketMap.size();
+        return idToPacketMap.size();
     }
 
     /**
@@ -120,14 +120,14 @@ public abstract class AbstractPlatformProtocol
      */
     public final AbstractPacket constructPacket(int packetId) throws ProtocolException
     {
-        if (!this.idToPacketMap.containsKey(packetId))
+        if (!idToPacketMap.containsKey(packetId))
         {
             throw new ProtocolException(String.format(ERROR_UNKNOWN_PACKET_ID, packetId));
         }
 
         try
         {
-            return this.idToPacketMap.get(packetId).newInstance();
+            return idToPacketMap.get(packetId).newInstance();
         }
         catch (IllegalAccessException iae)
         {
@@ -148,7 +148,7 @@ public abstract class AbstractPlatformProtocol
      */
     public final boolean packetRegistered(int packetId)
     {
-        return this.idToPacketMap.containsKey(packetId);
+        return idToPacketMap.containsKey(packetId);
     }
 
     /**
@@ -160,7 +160,7 @@ public abstract class AbstractPlatformProtocol
      */
     public final boolean packetRegistered(Class<? extends AbstractPacket> packetClass)
     {
-        return this.packetToIdMap.containsKey(packetClass);
+        return packetToIdMap.containsKey(packetClass);
     }
 
     /**
@@ -174,13 +174,13 @@ public abstract class AbstractPlatformProtocol
      */
     public final int getPacketId(Class<? extends AbstractPacket> packetClass) throws ProtocolException
     {
-        if (!this.packetToIdMap.containsKey(packetClass))
+        if (!packetToIdMap.containsKey(packetClass))
         {
             throw new ProtocolException(String.format(ERROR_UNKNOWN_PACKET_CLASS, packetClass.getName()));
         }
         else
         {
-            return this.packetToIdMap.get(packetClass);
+            return packetToIdMap.get(packetClass);
         }
     }
 
@@ -192,7 +192,7 @@ public abstract class AbstractPlatformProtocol
     {
         StringBuilder sb = new StringBuilder();
         sb.append("Protocol mapping: {");
-        for (Entry<Integer, Class<? extends AbstractPacket>> entry : this.idToPacketMap.entrySet())
+        for (Entry<Integer, Class<? extends AbstractPacket>> entry : idToPacketMap.entrySet())
         {
             sb.append("[").append(entry.getKey()).append(" --> ").append(entry.getValue().getSimpleName()).append("]").append(
                 System.lineSeparator());

@@ -5,11 +5,10 @@
 
 package platform.bridge.proxy.client;
 
-import game.usn.bridge.api.protocol.AbstractPacket;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import platform.bridge.api.protocol.AbstractPacket;
 import platform.core.api.exception.BridgeException;
 
 /**

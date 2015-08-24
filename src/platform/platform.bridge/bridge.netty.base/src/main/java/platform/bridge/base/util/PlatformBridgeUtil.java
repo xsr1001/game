@@ -1,11 +1,11 @@
 /**
- * @file USNBridgeUtil.java
+ * @file PlatformBridgeUtil.java
  * @brief Bridge utility functionality.
  */
 
-package game.usn.bridge.util;
+package platform.bridge.base.util;
 
-import game.usn.bridge.pipeline.ChannelOptions;
+import platform.bridge.base.pipeline.ChannelOptions;
 
 /**
  * Bridge utility functionality.
@@ -13,7 +13,7 @@ import game.usn.bridge.pipeline.ChannelOptions;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class USNBridgeUtil
+public class PlatformBridgeUtil
 {
 
     /**
@@ -31,5 +31,4 @@ public class USNBridgeUtil
     {
         // TODO: implement logic.
     }
-
 }

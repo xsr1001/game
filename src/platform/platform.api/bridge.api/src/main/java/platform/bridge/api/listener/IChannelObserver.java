@@ -3,7 +3,7 @@
  * @brief IChannelObserver for receiving channel life-cycle notifications.
  */
 
-package game.usn.bridge.api.listener;
+package platform.bridge.api.listener;
 
 import java.net.InetSocketAddress;
 
