@@ -5,7 +5,6 @@
 
 package game.usn.bridge.test.pipeline;
 
-import game.usn.bridge.pipeline.encoder.USNPacketEncoder;
 import game.usn.bridge.test.e2e.data.UnknownPacket;
 import game.usn.bridge.test.pipeline.data.TestPacket;
 import game.usn.bridge.test.pipeline.data.TestServiceProtocol;
@@ -19,6 +18,8 @@ import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import platform.bridge.base.pipeline.encoder.PlatformPacketEncoder;
+
 /**
  * Test pipeline protocol encoder.
  * 
@@ -29,7 +30,7 @@ public class TestUSNPacketEncoder
 {
     // Reusable fields.
     private Exception ex;
-    private USNPacketEncoder encoder;
+    private PlatformPacketEncoder encoder;
     private ByteBuf buffer = Unpooled.buffer();
 
     /**
@@ -39,7 +40,7 @@ public class TestUSNPacketEncoder
     public void beforeTest()
     {
         this.ex = null;
-        this.encoder = new USNPacketEncoder(new TestServiceProtocol());
+        this.encoder = new PlatformPacketEncoder(new TestServiceProtocol());
         this.buffer.clear();
     }
 
@@ -51,7 +52,7 @@ public class TestUSNPacketEncoder
     {
         try
         {
-            new USNPacketEncoder(null);
+            new PlatformPacketEncoder(null);
         }
         catch (Exception e)
         {

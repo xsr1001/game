@@ -5,10 +5,6 @@
 
 package game.usn.bridge.test.e2e;
 
-import game.usn.bridge.USNBridgeManager;
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.listener.IConnectionObserver;
-import game.usn.bridge.pipeline.ChannelOptions;
 import game.usn.bridge.test.e2e.data.TestClient;
 import game.usn.bridge.test.e2e.data.TestService;
 
@@ -22,6 +18,11 @@ import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.listener.IConnectionObserver;
+import platform.bridge.base.PlatformBridgeManager;
+import platform.bridge.base.pipeline.ChannelOptions;
 
 /**
  * End to end test for bridge for service proxy.
@@ -76,7 +77,7 @@ public class BridgeE2ETest
     {
         try
         {
-            USNBridgeManager.getInstance().registerServiceProxy(this.testservice, this.listenerSet, 0, serverOptions);
+            PlatformBridgeManager.getInstance().registerServiceProxy(this.testservice, this.listenerSet, 0, serverOptions);
 
             // Server bind.
             System.out.println("Sleeping for server bind.");
@@ -95,7 +96,7 @@ public class BridgeE2ETest
         try
         {
             InetSocketAddress address = new InetSocketAddress(Inet4Address.getLocalHost(), 0);
-            USNBridgeManager.getInstance().registerClientProxy(this.testClient, this.listenerSetClient,
+            PlatformBridgeManager.getInstance().registerClientProxy(this.testClient, this.listenerSetClient,
                 this.testservice.servicePort, address.getHostName(), clientOptions);
 
             System.out.println("Sleeping for client connect.");

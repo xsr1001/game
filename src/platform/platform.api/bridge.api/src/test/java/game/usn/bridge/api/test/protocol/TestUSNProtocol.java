@@ -5,7 +5,6 @@
 
 package game.usn.bridge.api.test.protocol;
 
-import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
 import game.usn.bridge.api.test.protocol.data.TestPacket;
 import game.usn.bridge.api.test.protocol.data.TestPacket2;
 import game.usn.bridge.api.test.protocol.data.TestProtocol1;
@@ -17,6 +16,8 @@ import junit.framework.Assert;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
  * Test for base protocol handling.

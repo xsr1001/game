@@ -5,8 +5,6 @@
 
 package platform.bridge.proxy.client;
 
-import game.usn.bridge.api.protocol.AbstractPacket;
-import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -15,6 +13,8 @@ import io.netty.channel.ChannelHandlerContext;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import platform.bridge.api.protocol.AbstractPacket;
+import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -41,6 +41,13 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     {
         super();
         channelConnected = new AtomicBoolean();
+    }
+
+    @Override
+    protected void release() throws BridgeException
+    {
+        super.release();
+        channel.close();
     }
 
     /**
@@ -113,6 +120,6 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     @Override
     public final void notifyChannelUp(String proxyName, InetSocketAddress address)
     {
-        // No need to implement. Same as channelActive for client connection.
+        // No need to implement as channelActive() is enough for client proxy.
     }
 }

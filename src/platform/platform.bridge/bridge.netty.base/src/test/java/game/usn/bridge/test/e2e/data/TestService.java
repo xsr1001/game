@@ -5,14 +5,15 @@
 
 package game.usn.bridge.test.e2e.data;
 
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.net.InetSocketAddress;
+
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.base.proxy.AbstractBridgeAdapter;
 
 /**
  * Simple test service.

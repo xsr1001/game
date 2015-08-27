@@ -5,7 +5,6 @@
 
 package game.usn.bridge.test.pipeline;
 
-import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
 import game.usn.bridge.test.pipeline.data.TestPacket;
 import game.usn.bridge.test.pipeline.data.TestPacket2;
 import game.usn.bridge.test.pipeline.data.TestServiceProtocol;
@@ -22,6 +21,8 @@ import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import platform.bridge.base.pipeline.decoder.PlatformPacketDecoder;
+
 /**
  * Test pipeline protocol decoder.
  * 
@@ -33,7 +34,7 @@ public class TestUSNPacketDecoder
     // Reusable fields.
     private Exception ex;
     private List<Object> outObjectList = new ArrayList<Object>();
-    private USNPacketDecoder decoder;
+    private PlatformPacketDecoder decoder;
     private ByteBuf buffer = Unpooled.buffer();
 
     /**
@@ -44,7 +45,7 @@ public class TestUSNPacketDecoder
     {
         this.ex = null;
         this.outObjectList.clear();
-        this.decoder = new USNPacketDecoder(new TestServiceProtocol());
+        this.decoder = new PlatformPacketDecoder(new TestServiceProtocol());
         this.buffer.clear();
     }
 
@@ -56,7 +57,7 @@ public class TestUSNPacketDecoder
     {
         try
         {
-            new USNPacketDecoder(null);
+            new PlatformPacketDecoder(null);
         }
         catch (Exception e)
         {

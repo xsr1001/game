@@ -5,7 +5,7 @@
 
 package game.usn.bridge.api.test.protocol.data;
 
-import game.usn.bridge.api.protocol.AbstractPacket;
+import platform.bridge.api.protocol.AbstractPacket;
 import io.netty.buffer.ByteBuf;
 
 /**

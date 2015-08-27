@@ -5,7 +5,7 @@
 
 package game.usn.bridge.api.test.protocol.data;
 
-import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
  * Test protocol instance 1.

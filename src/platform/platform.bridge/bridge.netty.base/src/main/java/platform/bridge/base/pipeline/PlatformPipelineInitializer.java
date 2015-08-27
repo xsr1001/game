@@ -1,19 +1,13 @@
 /**
- * @file USNPipelineInitializer.java
- * @brief USNPipelineInitializer provides network stack initialization logic for new connections.
+ * @file PlatformPipelineInitializer.java
+ * @brief PlatformPipelineInitializer provides network stack initialization logic for new connections.
  */
 
-package game.usn.bridge.pipeline;
+package platform.bridge.base.pipeline;
 
 import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.listener.IConnectionObserver;
-import game.usn.bridge.api.listener.IConnectionObserver.EConnectionState;
-import game.usn.bridge.pipeline.decoder.USNPacketDecoder;
-import game.usn.bridge.pipeline.encoder.USNPacketEncoder;
-import game.usn.bridge.proxy.AbstractBridgeAdapter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
@@ -26,19 +20,26 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.listener.IConnectionObserver;
+import platform.bridge.api.listener.IConnectionObserver.EConnectionState;
+import platform.bridge.base.pipeline.decoder.PlatformPacketDecoder;
+import platform.bridge.base.pipeline.encoder.PlatformPacketEncoder;
+import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
- * USNPipelineInitializer. Provides network stack initialization logic for new connections. Consumer must provide valid
- * parameters for initializing base USN network stack and may provide additional consumer specific data handlers.
+ * PlatformPipelineInitializer. Provides network stack initialization logic for new connections. Consumer must provide
+ * valid parameters for initializing base platform network stack and may provide additional consumer specific data
+ * handlers.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public final class USNPipelineInitializer extends ChannelInitializer<Channel>
+public final class PlatformPipelineInitializer extends ChannelInitializer<Channel>
 {
     // Logger.
-    private static final Logger LOG = LoggerFactory.getLogger(USNPipelineInitializer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PlatformPipelineInitializer.class);
 
     // Args, messages, errors.
     private static final String MSG_NEW_CONNECTION_FORMAT = "New %s with host: [%s].";
@@ -76,7 +77,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
      *            incoming packets will be routed to it. Proxy should contain consumer specific protocol object and
      *            optionally additional pipeline in and out handlers.
      */
-    public USNPipelineInitializer(AbstractBridgeAdapter consumerProxy)
+    public PlatformPipelineInitializer(AbstractBridgeAdapter consumerProxy)
     {
         ArgsChecker.errorOnNull(consumerProxy, ARG_CONSUMER_PROXY);
         ArgsChecker.errorOnNull(consumerProxy.getProtocol(), ARG_CONSUMER_PROTOCOL);
@@ -85,7 +86,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     }
 
     /**
-     * This method will attempt to initialize USN and consumer specified network pipeline stack for incoming and
+     * This method will attempt to initialize platform and consumer specified network pipeline stack for incoming and
      * outgoing data.
      */
     @Override
@@ -120,13 +121,13 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
             }
         }
 
-        // Initialize base USN pipeline with non consumer modifiable handler chain.
-        initBaseUSNPipeline(ch, options);
+        // Initialize base platform pipeline with non consumer modifiable handler chain.
+        initBasePlatformPipeline(ch, options);
 
         // Add additional consumer specific in handlers.
         if (this.consumerProxy.getInHandlerList() != null)
         {
-            for (ChannelHandler handler : this.consumerProxy.getInHandlerList())
+            for (ChannelHandler handler : consumerProxy.getInHandlerList())
             {
                 ch.pipeline().addLast(String.format(HANDLER_CONSUMER_DECODER, handler.getClass().getSimpleName()),
                     handler);
@@ -136,7 +137,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         // Add additional consumer specific out handlers.
         if (this.consumerProxy.getOutHandlerList() != null)
         {
-            for (ChannelHandler handler : this.consumerProxy.getOutHandlerList())
+            for (ChannelHandler handler : consumerProxy.getOutHandlerList())
             {
                 ch.pipeline().addLast(String.format(HANDLER_CONSUMER_ENCODER, handler.getClass().getSimpleName()),
                     handler);
@@ -144,22 +145,22 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         }
 
         // Add actual data consumer end-point.
-        ch.pipeline().addLast(HANDLER_PROXY, this.consumerProxy);
+        ch.pipeline().addLast(HANDLER_PROXY, consumerProxy);
 
         LOG.exitMethod();
     }
 
     /**
-     * Initialize base USN network pipeline. This consists of low level connection handlers as well as basic data
-     * decoders and encoders. User defined data handlers are applied higher in the pipeline. USN pipeline: ([timeout
-     * handler]) --> [frame decoder] --> [packet decoder] --> ([SSL handler]) --> ([ServiceInfo handler])
+     * Initialize base platform network pipeline. This consists of low level connection handlers as well as basic data
+     * decoders and encoders. User defined data handlers are applied higher in the pipeline. Platform pipeline:
+     * ([timeout handler]) --> [frame decoder] --> [packet decoder] --> ([SSL handler]) --> ([ServiceInfo handler])
      * 
      * @param ch
      *            - a {@link Channel} instance to apply pipeline to.
      * @param options
      *            - a {@link ChannelOptions} defining consumer specific configuration for given channel.
      */
-    private void initBaseUSNPipeline(Channel ch, ChannelOptions options)
+    private void initBasePlatformPipeline(Channel ch, ChannelOptions options)
     {
         LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
 
@@ -174,13 +175,13 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
         ch.pipeline().addLast(
             HANDLER_FRAME_DECODER,
             new LengthFieldBasedFrameDecoder(1024, 0, this.consumerProxy.getProtocol().getFrameLengthHeaderSize(), 0,
-                this.consumerProxy.getProtocol().getFrameLengthHeaderSize()));
+                consumerProxy.getProtocol().getFrameLengthHeaderSize()));
         ch.pipeline().addLast(HANDLER_FRAME_ENCODER,
-            new LengthFieldPrepender(this.consumerProxy.getProtocol().getFrameLengthHeaderSize(), 0));
+            new LengthFieldPrepender(consumerProxy.getProtocol().getFrameLengthHeaderSize(), 0));
 
         // Add packet decoder and encoder.
-        ch.pipeline().addLast(HANDLER_PACKET_DECODER, new USNPacketDecoder(this.consumerProxy.getProtocol()));
-        ch.pipeline().addLast(HANDLER_PACKET_ENCODER, new USNPacketEncoder(this.consumerProxy.getProtocol()));
+        ch.pipeline().addLast(HANDLER_PACKET_DECODER, new PlatformPacketDecoder(consumerProxy.getProtocol()));
+        ch.pipeline().addLast(HANDLER_PACKET_ENCODER, new PlatformPacketEncoder(consumerProxy.getProtocol()));
 
         LOG.exitMethod();
     }
@@ -203,7 +204,7 @@ public final class USNPipelineInitializer extends ChannelInitializer<Channel>
     {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClass().getName());
-        sb.append(" for proxy: [").append(this.consumerProxy.getName()).append("] ");
+        sb.append(" for proxy: [").append(consumerProxy.getName()).append("] ");
         return sb.toString();
     }
 }
