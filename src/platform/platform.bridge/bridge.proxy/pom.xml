@@ -16,6 +16,7 @@
   	<dependency>
   		<groupId>game</groupId>
   		<artifactId>bridge.netty.base</artifactId>
+  		<scope>test</scope>
   	</dependency>
   </dependencies>
 </project>

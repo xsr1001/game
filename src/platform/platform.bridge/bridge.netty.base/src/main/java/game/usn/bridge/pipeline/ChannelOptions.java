@@ -59,7 +59,8 @@ public class ChannelOptions
     {
         this.SSLEnabled = isSSLEnabled;
         this.server = server;
-        this.connectionListenerSet = new HashSet<IConnectionObserver>(externalConnectionListenerSet);
+        this.connectionListenerSet = externalConnectionListenerSet == null ? new HashSet<IConnectionObserver>()
+            : new HashSet<IConnectionObserver>(externalConnectionListenerSet);
         this.readTimeOutChannelExpirationSec = readTimeoutSeconds;
     }
 
