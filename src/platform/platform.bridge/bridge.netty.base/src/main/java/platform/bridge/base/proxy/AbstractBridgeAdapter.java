@@ -64,7 +64,7 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
      * @throws BridgeException
      *             - throws {@link BridgeException} on data proxy initialization failure.
      */
-    protected void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
+    public void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
     {
         ArgsChecker.errorOnNull(getChannelOptions(), ARG_CHANNEL_OPTIONS);
 

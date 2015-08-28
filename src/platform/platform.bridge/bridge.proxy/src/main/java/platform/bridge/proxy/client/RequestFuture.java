@@ -97,4 +97,9 @@ public class RequestFuture
         this.result = result;
         countDownLatch.countDown();
     }
+
+    public void cancel()
+    {
+        countDownLatch.countDown();
+    }
 }

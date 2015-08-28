@@ -26,7 +26,7 @@ import platform.core.api.exception.BridgeException;
 public abstract class AbstractClientProxy extends AbstractBridgeAdapter
 {
     // Errors, args, mesages.
-    private static final String ERROR_MSG_SEND = "Cannot send a mesasge to remote service as channel is not connected.";
+    private static final String ERROR_MSG_SEND = "Cannot send a message to remote service as channel is not connected.";
 
     // A flag determining if channel is active (socket has connected).
     private AtomicBoolean channelConnected;

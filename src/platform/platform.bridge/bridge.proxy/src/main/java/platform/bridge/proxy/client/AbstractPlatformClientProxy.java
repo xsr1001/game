@@ -1,6 +1,6 @@
 /**
  * @file AbstractPlatformClientProxy.java
- * @brief Abstract platform client proxy provides a basic proxy functionality for interacting with a remote service.
+ * @brief Abstract platform client proxy provides a basic platform client proxy functionality for interacting with a remote service.
  */
 
 package platform.bridge.proxy.client;
@@ -14,15 +14,15 @@ import platform.bridge.api.proxy.ITransportIdentifiable;
 import platform.core.api.exception.BridgeException;
 
 /**
- * Abstract platform client proxy provides a basic client proxy functionality for interacting with a remote service. It
- * provides a synchronous and asynchronous data transmission with remote service.
+ * Abstract platform client proxy provides a basic platform client proxy functionality for interacting with a remote
+ * service. It provides a synchronous and asynchronous data transmission with remote service.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
 public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
 {
-    // Default wait time for a synchronous response.
+    // Default wait time for a synchronous response in seconds.
     private static final int DEFAULT_RESPONSE_WAIT_TIME_SEC = 2;
 
     // Request future map, mapping unique packet id to its request future.
@@ -35,6 +35,17 @@ public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
     {
         super();
         requestFutureMap = new ConcurrentHashMap<UUID, RequestFuture>();
+    }
+
+    @Override
+    public void release() throws BridgeException
+    {
+        super.release();
+        for (RequestFuture requestFuture : requestFutureMap.values())
+        {
+            requestFuture.cancel();
+        }
+        requestFutureMap.clear();
     }
 
     /**

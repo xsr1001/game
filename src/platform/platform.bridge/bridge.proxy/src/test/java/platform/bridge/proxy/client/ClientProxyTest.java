@@ -5,11 +5,6 @@
 
 package platform.bridge.proxy.client;
 
-import game.usn.bridge.USNBridgeManager;
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.pipeline.ChannelOptions;
-import game.usn.bridge.proxy.AbstractBridgeAdapter;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -17,18 +12,15 @@ import junit.framework.Assert;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.base.pipeline.ChannelOptions;
+import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.bridge.proxy.ProxyTestBase;
-import platform.core.api.exception.BridgeException;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(USNBridgeManager.class)
 public class ClientProxyTest extends ProxyTestBase
 {
     // Test checks.
@@ -60,9 +52,6 @@ public class ClientProxyTest extends ProxyTestBase
     @Test
     public void testClientProxy()
     {
-        USNBridgeManager mockedBridgeManager = Mockito.mock(USNBridgeManager.class);
-        Mockito.when(USNBridgeManager.getInstance()).thenReturn(mockedBridgeManager);
-
         Set<IChannelObserver> observerSet = new HashSet<IChannelObserver>();
         ChannelOptions options = new ChannelOptions(false, 10, false, null);
         int remoteHostPort = 1337;
@@ -95,31 +84,25 @@ public class ClientProxyTest extends ProxyTestBase
             ex = e;
         }
         Assert.assertNotNull(ex);
-        Assert.assertTrue(ex instanceof BridgeException);
+        Assert.assertTrue(ex instanceof IllegalArgumentException);
         ex = null;
 
         // Test OK.
         TestClientProxy testProxy1 = null;
         try
         {
-            testProxy1 = new TestClientProxy(options, "testProxy1", new ProxyTestBase.TestProtocol1(), null, null,
-                observerSet);
+            testProxy1 = Mockito.mock(TestClientProxy.class);
+            testProxy1.name = "testProxy1";
+            testProxy1.channelOptions = options;
+            testProxy1.protocol = new ProxyTestBase.TestProtocol1();
+            testProxy1.channelObserverSet = observerSet;
 
             Mockito.doAnswer(new Answer<Object>() {
                 public Object answer(InvocationOnMock invocation)
                 {
-                    Object[] args = invocation.getArguments();
-
-                    bridgeAdapterResult = (AbstractBridgeAdapter) args[0];
-                    observerSetResult = (Set<IChannelObserver>) args[1];
-                    remoteHostIPv4Result = (String) args[2];
-                    remoteHostPortResult = (Integer) args[3];
-                    channelOptionsResult = (ChannelOptions) args[4];
-
                     return new Object();
                 }
-            }).when(mockedBridgeManager).registerClientProxy(testProxy1, observerSet, remoteHostPort, remoteHostIPv4,
-                options);
+            }).when(testProxy1).initialize(remoteHostIPv4, remoteHostPort);
 
             testProxy1.initialize(null, 1337);
         }
@@ -130,10 +113,7 @@ public class ClientProxyTest extends ProxyTestBase
         Assert.assertNull(ex);
         ex = null;
 
-        Assert.assertNull(remoteHostIPv4Result);
-        Assert.assertEquals(observerSet, observerSetResult);
-        Assert.assertEquals(options, channelOptionsResult);
-        Assert.assertEquals(1337, remoteHostPortResult.intValue());
-        Assert.assertEquals(testProxy1, bridgeAdapterResult);
+        Assert.assertEquals(observerSet, testProxy1.channelObserverSet);
+        Assert.assertEquals(options, testProxy1.channelOptions);
     }
 }

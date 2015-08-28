@@ -16,7 +16,14 @@
   	<dependency>
   		<groupId>game</groupId>
   		<artifactId>bridge.netty.base</artifactId>
-  		<scope>test</scope>
+  	</dependency>
+  	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>platform.core</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>core.api</artifactId>
   	</dependency>
   </dependencies>
 </project>

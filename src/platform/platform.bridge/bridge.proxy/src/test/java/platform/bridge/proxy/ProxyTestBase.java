@@ -5,10 +5,6 @@
 
 package platform.bridge.proxy;
 
-import game.usn.bridge.api.listener.IChannelObserver;
-import game.usn.bridge.api.protocol.AbstractPacket;
-import game.usn.bridge.api.protocol.AbstractPlatformProtocol;
-import game.usn.bridge.pipeline.ChannelOptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 
@@ -16,6 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.protocol.AbstractPacket;
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.base.pipeline.ChannelOptions;
 import platform.bridge.proxy.client.AbstractPlatformClientProxy;
 
 /**
@@ -34,12 +34,12 @@ public class ProxyTestBase
      */
     public static class TestClientProxy extends AbstractPlatformClientProxy
     {
-        private final ChannelOptions channelOptions;
-        private final String name;
-        private final AbstractPlatformProtocol protocol;
-        private final List<ChannelHandler> inHandlerList;
-        private final List<ChannelHandler> outHandlerList;
-        private final Set<IChannelObserver> channelObserverSet;
+        public ChannelOptions channelOptions;
+        public String name;
+        public AbstractPlatformProtocol protocol;
+        public List<ChannelHandler> inHandlerList;
+        public List<ChannelHandler> outHandlerList;
+        public Set<IChannelObserver> channelObserverSet;
 
         public List<AbstractPacket> receivedPackets;
 
