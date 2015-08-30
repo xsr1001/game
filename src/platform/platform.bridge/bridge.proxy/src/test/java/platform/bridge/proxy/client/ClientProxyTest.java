@@ -1,6 +1,6 @@
 /**
  * @file ClientProxyTest.java
- * @brief <description>
+ * @brief Bridge client proxy tests.
  */
 
 package platform.bridge.proxy.client;
@@ -18,19 +18,22 @@ import org.mockito.stubbing.Answer;
 
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.proxy.ChannelOptions;
-import platform.bridge.base.proxy.AbstractBridgeAdapter;
+import platform.bridge.api.proxy.IClientProxyBase;
 import platform.bridge.proxy.ProxyTestBase;
 
+/**
+ * Bridge client proxy tests.
+ * 
+ * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+ *
+ */
 public class ClientProxyTest extends ProxyTestBase
 {
     // Test checks.
     private Exception ex = null;
 
-    private AbstractBridgeAdapter bridgeAdapterResult;
-    private Set<IChannelObserver> observerSetResult;
     private String remoteHostIPv4Result;
     private Integer remoteHostPortResult;
-    private ChannelOptions channelOptionsResult;
 
     /**
      * Reset stuff before each test.
@@ -39,30 +42,34 @@ public class ClientProxyTest extends ProxyTestBase
     public void before()
     {
         ex = null;
-        bridgeAdapterResult = null;
-        observerSetResult = null;
         remoteHostIPv4Result = null;
         remoteHostPortResult = null;
-        channelOptionsResult = null;
     }
 
     /**
      * Test client proxy.
      */
     @Test
-    public void testClientProxy()
+    public void testClientProxy() throws Exception
     {
+        // Prepare test data.
         Set<IChannelObserver> observerSet = new HashSet<IChannelObserver>();
         ChannelOptions options = new ChannelOptions(false, 10, false, null);
         int remoteHostPort = 1337;
         String remoteHostIPv4 = "remoteHostIPv4";
+        String testProxyName = "testProxy1";
 
-        // Test invalid channel options.
+        TestClientProxy testProxy1 = null;
+
+        // Mock client proxy base.
+        IClientProxyBase clientProxyBase = Mockito.mock(IClientProxyBase.class);
+
+        // Test invalid remote host ip.
         try
         {
-            TestClientProxy testProxy1 = new TestClientProxy(null, "testProxy1", new ProxyTestBase.TestProtocol1(),
-                null, null, observerSet);
-            testProxy1.initialize(remoteHostIPv4, 1337);
+            testProxy1 = new TestClientProxy(options, "testProxy1", new ProxyTestBase.TestProtocol1(), observerSet,
+                clientProxyBase);
+            testProxy1.initialize(null, remoteHostPort);
         }
         catch (Exception e)
         {
@@ -72,12 +79,12 @@ public class ClientProxyTest extends ProxyTestBase
         Assert.assertTrue(ex instanceof IllegalArgumentException);
         ex = null;
 
-        // Test invalid remote host ip.
+        // Test invalid remove host port.
         try
         {
-            TestClientProxy testProxy1 = new TestClientProxy(options, "testProxy1", new ProxyTestBase.TestProtocol1(),
-                null, null, observerSet);
-            testProxy1.initialize(null, 1337);
+            testProxy1 = new TestClientProxy(options, "testProxy1", new ProxyTestBase.TestProtocol1(), observerSet,
+                clientProxyBase);
+            testProxy1.initialize(remoteHostIPv4, null);
         }
         catch (Exception e)
         {
@@ -88,23 +95,22 @@ public class ClientProxyTest extends ProxyTestBase
         ex = null;
 
         // Test OK.
-        TestClientProxy testProxy1 = null;
         try
         {
-            testProxy1 = Mockito.mock(TestClientProxy.class);
-            testProxy1.name = "testProxy1";
-            testProxy1.channelOptions = options;
-            testProxy1.protocol = new ProxyTestBase.TestProtocol1();
-            testProxy1.channelObserverSet = observerSet;
+            testProxy1 = new TestClientProxy(options, testProxyName, new ProxyTestBase.TestProtocol1(), observerSet,
+                clientProxyBase);
 
             Mockito.doAnswer(new Answer<Object>() {
-                public Object answer(InvocationOnMock invocation)
+                public Object answer(InvocationOnMock invocation) throws Exception
                 {
+                    remoteHostIPv4Result = (String) invocation.getArguments()[0];
+                    remoteHostPortResult = (Integer) invocation.getArguments()[1];
+
                     return new Object();
                 }
-            }).when(testProxy1).initialize(remoteHostIPv4, remoteHostPort);
+            }).when(clientProxyBase).initialize(remoteHostIPv4, remoteHostPort, testProxy1);
 
-            testProxy1.initialize(null, 1337);
+            testProxy1.initialize(remoteHostIPv4, remoteHostPort);
         }
         catch (Exception e)
         {
@@ -113,7 +119,9 @@ public class ClientProxyTest extends ProxyTestBase
         Assert.assertNull(ex);
         ex = null;
 
-        Assert.assertEquals(observerSet, testProxy1.channelObserverSet);
-        Assert.assertEquals(options, testProxy1.channelOptions);
+        Assert.assertEquals(remoteHostIPv4, remoteHostIPv4Result);
+        Assert.assertEquals(remoteHostPort, remoteHostPortResult.intValue());
+        Assert.assertEquals(testProxyName, testProxy1.getName());
+        Assert.assertEquals(options, testProxy1.getChannelOptions());
     }
 }

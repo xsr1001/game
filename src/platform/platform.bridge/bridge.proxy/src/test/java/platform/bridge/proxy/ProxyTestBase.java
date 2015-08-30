@@ -1,13 +1,13 @@
 /**
  * @file ProxyTestBase.java
- * @brief Proxy test base functionality.
+ * @brief Proxy test base functionality. Provides test data and utility methods for running platform proxy tests.
  */
 
 package platform.bridge.proxy;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -16,6 +16,7 @@ import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.IClientProxyBase;
 import platform.bridge.proxy.client.AbstractPlatformClientProxy;
 
 /**
@@ -37,23 +38,19 @@ public class ProxyTestBase
         public ChannelOptions channelOptions;
         public String name;
         public AbstractPlatformProtocol protocol;
-        public List<ChannelHandler> inHandlerList;
-        public List<ChannelHandler> outHandlerList;
         public Set<IChannelObserver> channelObserverSet;
-
+        public boolean channelUp;
+        public boolean channelDown;
         public List<AbstractPacket> receivedPackets;
 
         public TestClientProxy(ChannelOptions channelOptions, String name, AbstractPlatformProtocol protocol,
-            List<ChannelHandler> inHandlerList, List<ChannelHandler> outHandlerList,
-            Set<IChannelObserver> channelObserverSet)
+            Set<IChannelObserver> channelObserverSet, IClientProxyBase clientProxyBase)
         {
-            super();
+            super(clientProxyBase);
 
             this.channelOptions = channelOptions;
             this.name = name;
             this.protocol = protocol;
-            this.inHandlerList = inHandlerList;
-            this.outHandlerList = outHandlerList;
             this.channelObserverSet = channelObserverSet;
 
             receivedPackets = new ArrayList<AbstractPacket>();
@@ -84,21 +81,21 @@ public class ProxyTestBase
         }
 
         @Override
-        public List<ChannelHandler> getInHandlerList()
-        {
-            return inHandlerList;
-        }
-
-        @Override
-        public List<ChannelHandler> getOutHandlerList()
-        {
-            return outHandlerList;
-        }
-
-        @Override
         public Set<IChannelObserver> getChannelObserverSet()
         {
             return channelObserverSet;
+        }
+
+        @Override
+        public void notifyChannelUp(String proxyName, InetSocketAddress address)
+        {
+            channelUp = true;
+        }
+
+        @Override
+        public void notifyChannelDown(String proxyName)
+        {
+            channelDown = true;
         }
     }
 

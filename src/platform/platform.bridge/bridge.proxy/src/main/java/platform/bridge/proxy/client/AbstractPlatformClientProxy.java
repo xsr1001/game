@@ -28,6 +28,8 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
 {
     // Args.
     private static final String ARG_CLIENT_PROXY_BASE = "clientProxyBase";
+    private static final String ARG_SERVICE_IP = "serviceIPv4";
+    private static final String ARG_SERVICE_PORT = "servicePort";
 
     // Default wait time for a synchronous response in seconds.
     private static final int DEFAULT_RESPONSE_WAIT_TIME_SEC = 2;
@@ -81,6 +83,9 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
      */
     public void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
     {
+        ArgsChecker.errorOnNull(serviceIPv4Address, ARG_SERVICE_IP);
+        ArgsChecker.errorOnNull(servicePort, ARG_SERVICE_PORT);
+
         clientProxyBase.initialize(serviceIPv4Address, servicePort, this);
     }
 
