@@ -35,7 +35,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import platform.bridge.api.listener.IChannelObserver;
-import platform.bridge.base.pipeline.ChannelOptions;
+import platform.bridge.api.proxy.ChannelOptions;
 import platform.bridge.base.pipeline.PlatformPipelineInitializer;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.core.api.exception.BridgeException;

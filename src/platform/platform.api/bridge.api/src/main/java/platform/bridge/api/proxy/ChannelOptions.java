@@ -3,18 +3,15 @@
  * @brief ChannelOptions provides basic channel and connection options.
  */
 
-package platform.bridge.base.pipeline;
+package platform.bridge.api.proxy;
 
 import java.util.HashSet;
 import java.util.Set;
 
 import platform.bridge.api.listener.IConnectionObserver;
-import platform.bridge.base.util.PlatformBridgeUtil;
 
 /**
- * ChannelOptions. Provides basic channel and connection options. This is just a container for various options, it does
- * not attempt to validate any data. Refer to {@link PlatformBridgeUtil#validateChannelOptions(ChannelOptions, boolean)} for
- * options validation.
+ * ChannelOptions. Provides basic channel and connection options. This is just a container for various options.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *

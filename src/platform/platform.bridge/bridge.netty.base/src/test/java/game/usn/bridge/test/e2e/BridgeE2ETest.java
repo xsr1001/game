@@ -21,8 +21,8 @@ import org.junit.Test;
 
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.listener.IConnectionObserver;
+import platform.bridge.api.proxy.ChannelOptions;
 import platform.bridge.base.PlatformBridgeManager;
-import platform.bridge.base.pipeline.ChannelOptions;
 
 /**
  * End to end test for bridge for service proxy.

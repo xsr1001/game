@@ -9,7 +9,6 @@ import game.core.log.Logger;
 import game.core.log.LoggerFactory;
 import game.core.util.ArgsChecker;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
@@ -23,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.listener.IConnectionObserver;
 import platform.bridge.api.listener.IConnectionObserver.EConnectionState;
+import platform.bridge.api.proxy.ChannelOptions;
 import platform.bridge.base.pipeline.decoder.PlatformPacketDecoder;
 import platform.bridge.base.pipeline.encoder.PlatformPacketEncoder;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
@@ -62,8 +62,8 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     private static final String HANDLER_FRAME_ENCODER = "handler_frame_encoder";
     private static final String HANDLER_PACKET_DECODER = "handler_packet_decoder";
     private static final String HANDLER_PACKET_ENCODER = "handler_packet_encoder";
-    private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
-    private static final String HANDLER_CONSUMER_ENCODER = "handler_consumer_encoder_%s";
+    // private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
+    // private static final String HANDLER_CONSUMER_ENCODER = "handler_consumer_encoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
 
     // In/Out packet data end-point.
@@ -124,25 +124,25 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
         // Initialize base platform pipeline with non consumer modifiable handler chain.
         initBasePlatformPipeline(ch, options);
 
-        // Add additional consumer specific in handlers.
-        if (this.consumerProxy.getInHandlerList() != null)
-        {
-            for (ChannelHandler handler : consumerProxy.getInHandlerList())
-            {
-                ch.pipeline().addLast(String.format(HANDLER_CONSUMER_DECODER, handler.getClass().getSimpleName()),
-                    handler);
-            }
-        }
-
-        // Add additional consumer specific out handlers.
-        if (this.consumerProxy.getOutHandlerList() != null)
-        {
-            for (ChannelHandler handler : consumerProxy.getOutHandlerList())
-            {
-                ch.pipeline().addLast(String.format(HANDLER_CONSUMER_ENCODER, handler.getClass().getSimpleName()),
-                    handler);
-            }
-        }
+        // // Add additional consumer specific in handlers.
+        // if (this.consumerProxy.getInHandlerList() != null)
+        // {
+        // for (ChannelHandler handler : consumerProxy.getInHandlerList())
+        // {
+        // ch.pipeline().addLast(String.format(HANDLER_CONSUMER_DECODER, handler.getClass().getSimpleName()),
+        // handler);
+        // }
+        // }
+        //
+        // // Add additional consumer specific out handlers.
+        // if (this.consumerProxy.getOutHandlerList() != null)
+        // {
+        // for (ChannelHandler handler : consumerProxy.getOutHandlerList())
+        // {
+        // ch.pipeline().addLast(String.format(HANDLER_CONSUMER_ENCODER, handler.getClass().getSimpleName()),
+        // handler);
+        // }
+        // }
 
         // Add actual data consumer end-point.
         ch.pipeline().addLast(HANDLER_PROXY, consumerProxy);

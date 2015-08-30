@@ -98,6 +98,9 @@ public class RequestFuture
         countDownLatch.countDown();
     }
 
+    /**
+     * Cancels the blocking operation by decrementing the count down.
+     */
     public void cancel()
     {
         countDownLatch.countDown();

@@ -15,7 +15,7 @@ import java.util.Set;
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
-import platform.bridge.base.pipeline.ChannelOptions;
+import platform.bridge.api.proxy.ChannelOptions;
 import platform.bridge.proxy.client.AbstractPlatformClientProxy;
 
 /**

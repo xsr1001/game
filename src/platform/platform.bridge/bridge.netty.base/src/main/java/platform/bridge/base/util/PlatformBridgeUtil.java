@@ -5,7 +5,7 @@
 
 package platform.bridge.base.util;
 
-import platform.bridge.base.pipeline.ChannelOptions;
+import platform.bridge.api.proxy.ChannelOptions;
 
 /**
  * Bridge utility functionality.

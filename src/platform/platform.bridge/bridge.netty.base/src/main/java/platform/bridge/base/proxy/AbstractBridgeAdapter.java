@@ -6,10 +6,8 @@
 package platform.bridge.base.proxy;
 
 import game.core.util.ArgsChecker;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
-import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,8 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.api.proxy.ChannelOptions;
 import platform.bridge.base.PlatformBridgeManager;
-import platform.bridge.base.pipeline.ChannelOptions;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -108,20 +106,6 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
     }
 
     /**
-     * {@inheritDoc} Callback for channel life-cycle event. A connection with a remote service has been established, or
-     * a server socket channel has been successfully bound.
-     */
-    @Override
-    public abstract void notifyChannelUp(String proxyName, InetSocketAddress address);
-
-    /**
-     * {@inheritDoc} Callback for channel life-cycle event. Client has disconnected with remote service, or a server
-     * socket channel has been closed.
-     */
-    @Override
-    public abstract void notifyChannelDown(String proxyName);
-
-    /**
      * Retrieve proxy specific channel options.
      * 
      * @return - a {@link ChannelOptions} object, defining basic options to initialize network channel with.
@@ -141,20 +125,6 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
      * @return - an instance of {@link AbstractPlatformProtocol}.
      */
     public abstract AbstractPlatformProtocol getProtocol();
-
-    /**
-     * Provide proxy specific list of in handlers.
-     * 
-     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy specific in handlers.
-     */
-    public abstract List<ChannelHandler> getInHandlerList();
-
-    /**
-     * Provide proxy specific list of out handlers.
-     * 
-     * @return - a {@link List} of {@link ChannelHandler} objects, representing custom proxy specific out handlers.
-     */
-    public abstract List<ChannelHandler> getOutHandlerList();
 
     /**
      * Retrieve proxy specific channel observer set.

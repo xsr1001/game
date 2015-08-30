@@ -5,12 +5,16 @@
 
 package platform.bridge.proxy.client;
 
+import game.core.util.ArgsChecker;
+
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import platform.bridge.api.protocol.AbstractPacket;
-import platform.bridge.api.proxy.ITransportIdentifiable;
+import platform.bridge.api.proxy.IClientProxyBase;
+import platform.bridge.api.proxy.IResponseListener;
+import platform.bridge.api.proxy.transport.ITransportIdentifiable;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -20,27 +24,75 @@ import platform.core.api.exception.BridgeException;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
+public abstract class AbstractPlatformClientProxy implements IResponseListener
 {
+    // Args.
+    private static final String ARG_CLIENT_PROXY_BASE = "clientProxyBase";
+
     // Default wait time for a synchronous response in seconds.
     private static final int DEFAULT_RESPONSE_WAIT_TIME_SEC = 2;
 
     // Request future map, mapping unique packet id to its request future.
     private ConcurrentHashMap<UUID, RequestFuture> requestFutureMap;
 
+    // Network base specific client proxy base implementation.
+    private IClientProxyBase clientProxyBase;
+
+    // Amount of seconds to block waiting for respons to synchronous request.
+    private int responseWaitTimeSec;
+
     /**
      * Constructor.
+     * 
+     * @param clientProxyBase
+     *            - a {@link IClientProxyBase} client proxy base implementation.
      */
-    protected AbstractPlatformClientProxy()
+    protected AbstractPlatformClientProxy(IClientProxyBase clientProxyBase)
     {
-        super();
+        this(clientProxyBase, DEFAULT_RESPONSE_WAIT_TIME_SEC);
+    }
+
+    /**
+     * 
+     * @param clientProxyBase
+     *            - a {@link IClientProxyBase} client proxy base implementation.
+     * @param responseWaitTimeSec
+     *            - a time amount to wait for responses to synchronous requests.
+     */
+    protected AbstractPlatformClientProxy(IClientProxyBase clientProxyBase, int responseWaitTimeSec)
+    {
+        ArgsChecker.errorOnNull(clientProxyBase, ARG_CLIENT_PROXY_BASE);
+
+        this.clientProxyBase = clientProxyBase;
+        this.responseWaitTimeSec = responseWaitTimeSec;
+
         requestFutureMap = new ConcurrentHashMap<UUID, RequestFuture>();
     }
 
-    @Override
+    /**
+     * Initialized platform client proxy.
+     * 
+     * @param serviceIPv4Address
+     *            - a {@link String} service IPv4 address to connect with.
+     * @param servicePort
+     *            - a {@link Integer} service port to connect on.
+     * @throws BridgeException
+     *             - throws {@link BridgeException} on platform client proxy initialization failure.
+     */
+    public void initialize(String serviceIPv4Address, Integer servicePort) throws BridgeException
+    {
+        clientProxyBase.initialize(serviceIPv4Address, servicePort, this);
+    }
+
+    /**
+     * Release platform client proxy and cleanup.
+     * 
+     * @throws BridgeException
+     *             - throws {@link BridgeException} on release failure.
+     */
     public void release() throws BridgeException
     {
-        super.release();
+        clientProxyBase.release();
         for (RequestFuture requestFuture : requestFutureMap.values())
         {
             requestFuture.cancel();
@@ -70,8 +122,8 @@ public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
 
         try
         {
-            super.sendPacket(packet);
-            return requestFuture.get(DEFAULT_RESPONSE_WAIT_TIME_SEC, TimeUnit.SECONDS);
+            clientProxyBase.sendPacket(packet);
+            return requestFuture.get(responseWaitTimeSec, TimeUnit.SECONDS);
         }
         catch (BridgeException be)
         {
@@ -93,7 +145,7 @@ public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
      */
     protected final void notify(AbstractPacket packet) throws BridgeException
     {
-        super.sendPacket(packet);
+        clientProxyBase.sendPacket(packet);
     }
 
     /**
@@ -101,7 +153,7 @@ public abstract class AbstractPlatformClientProxy extends AbstractClientProxy
      * result otherwise notify proxy with data.
      */
     @Override
-    protected final void receive(AbstractPacket abstractPacket)
+    public final void receive(AbstractPacket abstractPacket)
     {
         UUID packetId = null;
         if (abstractPacket instanceof ITransportIdentifiable)

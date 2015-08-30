@@ -1,9 +1,9 @@
 /**
- * @file AbstractClientProxy.java
- * @brief Abstract client proxy defines basic client proxy functionality.
+ * @file NettyClientProxy.java
+ * @brief Netty client proxy defines netty specific client proxy functionality.
  */
 
-package platform.bridge.proxy.client;
+package platform.bridge.base.proxy.client;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -11,19 +11,25 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.net.InetSocketAddress;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.IClientProxyBase;
+import platform.bridge.api.proxy.IResponseListener;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
- * Abstract client proxy defines basic client proxy functionality.
+ * Netty client proxy defines netty specific client proxy functionality.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public abstract class AbstractClientProxy extends AbstractBridgeAdapter
+public class NettyClientProxy extends AbstractBridgeAdapter implements IClientProxyBase
 {
     // Errors, args, mesages.
     private static final String ERROR_MSG_SEND = "Cannot send a message to remote service as channel is not connected.";
@@ -34,17 +40,28 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     // Client channel.
     private Channel channel;
 
+    // Response listener for receiving service responses.
+    private IResponseListener responseListener;
+
     /**
      * Constructor.
      */
-    protected AbstractClientProxy()
+    public NettyClientProxy()
     {
         super();
         channelConnected = new AtomicBoolean();
     }
 
     @Override
-    protected void release() throws BridgeException
+    public void initialize(String serviceIPv4Address, Integer servicePort, IResponseListener responseListener)
+        throws BridgeException
+    {
+        super.initialize(serviceIPv4Address, servicePort);
+        this.responseListener = responseListener;
+    }
+
+    @Override
+    public void release() throws BridgeException
     {
         super.release();
         channel.close();
@@ -58,7 +75,7 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
      * @throws BridgeException
      *             - throws {@link BridgeException} on send failure.
      */
-    protected final void sendPacket(AbstractPacket packet) throws BridgeException
+    public final void sendPacket(AbstractPacket packet) throws BridgeException
     {
         if (channelConnected.get())
         {
@@ -76,21 +93,12 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     }
 
     /**
-     * Receive a response from the remote service.
-     * 
-     * @param packet
-     *            - a {@link AbstractPacket} response packet.
-     */
-    protected abstract void receive(AbstractPacket packet);
-
-    /**
      * {@inheritDoc}. Receive a response and forward it upstream.
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
     {
-        super.channelRead(ctx, msg);
-        receive(AbstractPacket.class.cast(msg));
+        responseListener.receive(AbstractPacket.class.cast(msg));
     }
 
     @Override
@@ -102,24 +110,50 @@ public abstract class AbstractClientProxy extends AbstractBridgeAdapter
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception
+    public final void channelInactive(ChannelHandlerContext ctx) throws Exception
     {
         super.channelInactive(ctx);
         channelConnected.set(false);
     }
 
     @Override
-    public void notifyChannelDown(String proxyName)
+    public final void notifyChannelDown(String proxyName)
     {
         if (proxyName.compareTo(getName()) == 0)
         {
             channelConnected.set(false);
         }
+        responseListener.notifyChannelDown(proxyName);
     }
 
     @Override
     public final void notifyChannelUp(String proxyName, InetSocketAddress address)
     {
         // No need to implement as channelActive() is enough for client proxy.
+        responseListener.notifyChannelUp(proxyName, address);
+    }
+
+    @Override
+    protected ChannelOptions getChannelOptions()
+    {
+        return responseListener.getChannelOptions();
+    }
+
+    @Override
+    public String getName()
+    {
+        return responseListener.getName();
+    }
+
+    @Override
+    public AbstractPlatformProtocol getProtocol()
+    {
+        return responseListener.getProtocol();
+    }
+
+    @Override
+    public Set<IChannelObserver> getChannelObserverSet()
+    {
+        return responseListener.getChannelObserverSet();
     }
 }

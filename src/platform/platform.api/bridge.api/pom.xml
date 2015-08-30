@@ -10,6 +10,10 @@
   <description>Bridge APIs.</description>
    <dependencies>
   	<dependency>
+  		<groupId>game</groupId>
+  		<artifactId>core.api</artifactId>
+  	</dependency>
+  	<dependency>
   		<groupId>io.netty</groupId>
   		<artifactId>netty-transport</artifactId>
   		<version>4.0.28.Final</version>

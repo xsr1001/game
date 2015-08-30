@@ -3,7 +3,7 @@
  * @brief Interface defining capability for object to be uniquely identifiable on transport layer.
  */
 
-package platform.bridge.api.proxy;
+package platform.bridge.api.proxy.transport;
 
 import java.util.UUID;
 
