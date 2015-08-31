@@ -1,6 +1,6 @@
 /**
  * @file IResponseListener.java
- * @brief Response listener defines capabilities for a service proxy to receive data from network base.
+ * @brief Response listener defines capabilities for a proxy to receive data from network base.
  */
 
 package platform.bridge.api.proxy;
@@ -13,8 +13,8 @@ import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
- * Response listener defines capabilities for a service proxy to receive data from network base. Additional it defines
- * proxy basic proxy capabilites for working with network base.
+ * Response listener defines capabilities for a proxy to receive data from network base. Additionally it defines basic
+ * proxy capabilities for working with network base.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -22,7 +22,7 @@ import platform.bridge.api.protocol.AbstractPlatformProtocol;
 public interface IResponseListener extends IChannelObserver
 {
     /**
-     * Receive a packet from network base.
+     * Receive a packet from network proxy base.
      * 
      * @param abstractPacket
      *            - a {@link AbstractPacket} to receive.

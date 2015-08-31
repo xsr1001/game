@@ -5,8 +5,6 @@
 
 package platform.bridge.proxy;
 
-import io.netty.buffer.ByteBuf;
-
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,9 +42,9 @@ public class ProxyTestBase
         public List<AbstractPacket> receivedPackets;
 
         public TestClientProxy(ChannelOptions channelOptions, String name, AbstractPlatformProtocol protocol,
-            Set<IChannelObserver> channelObserverSet, IClientProxyBase clientProxyBase)
+            Set<IChannelObserver> channelObserverSet, IClientProxyBase clientProxyBase, int timeToBlock)
         {
-            super(clientProxyBase);
+            super(clientProxyBase, timeToBlock);
 
             this.channelOptions = channelOptions;
             this.name = name;
@@ -99,79 +97,4 @@ public class ProxyTestBase
         }
     }
 
-    /**
-     * Test packet 1.
-     * 
-     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
-     *
-     */
-    public static class Packet1 extends AbstractPacket
-    {
-        private String testString = "test1";
-
-        public void read(ByteBuf buf)
-        {
-            testString = readString(buf);
-        }
-
-        public void write(ByteBuf buf)
-        {
-            writeString(buf, testString);
-        }
-    }
-
-    /**
-     * Test packet 2.
-     * 
-     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
-     *
-     */
-    public static class Packet2 extends AbstractPacket
-    {
-        private String testString = "test2";
-        private int bla = 2;
-
-        public void read(ByteBuf buf)
-        {
-            testString = readString(buf);
-            bla = readInt(buf);
-        }
-
-        public void write(ByteBuf buf)
-        {
-            writeString(buf, testString);
-            writeInt(bla, buf);
-        }
-    }
-
-    /**
-     * Test protocol 1.
-     * 
-     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
-     *
-     */
-    public static class TestProtocol1 extends AbstractPlatformProtocol
-    {
-        public TestProtocol1()
-        {
-            super();
-            registerPacket(1, Packet1.class);
-        }
-    }
-
-    /**
-     * Test protocol 2.
-     * 
-     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
-     *
-     */
-    public static class TestProtocol2 extends AbstractPlatformProtocol
-    {
-        public TestProtocol2()
-        {
-            super();
-            registerPacket(1, Packet1.class);
-            registerPacket(2, Packet2.class);
-        }
-    }
 }

@@ -1,6 +1,6 @@
 /**
  * @file AbstractPlatformClientProxy.java
- * @brief Abstract platform client proxy provides a basic platform client proxy functionality for interacting with a remote service.
+ * @brief Abstract platform client proxy provides a basic platform client proxy functionality for interacting with remote service.
  */
 
 package platform.bridge.proxy.client;
@@ -18,7 +18,7 @@ import platform.bridge.api.proxy.transport.ITransportIdentifiable;
 import platform.core.api.exception.BridgeException;
 
 /**
- * Abstract platform client proxy provides a basic platform client proxy functionality for interacting with a remote
+ * Abstract platform client proxy provides a basic platform client proxy functionality for interacting with remote
  * service. It provides a synchronous and asynchronous data transmission with remote service.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
@@ -28,6 +28,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
 {
     // Args.
     private static final String ARG_CLIENT_PROXY_BASE = "clientProxyBase";
+    private static final String ARG_RESPONSE_WAIT_TIME = "responseWaitTimeSec";
     private static final String ARG_SERVICE_IP = "serviceIPv4";
     private static final String ARG_SERVICE_PORT = "servicePort";
 
@@ -40,7 +41,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
     // Network base specific client proxy base implementation.
     private IClientProxyBase clientProxyBase;
 
-    // Amount of seconds to block waiting for respons to synchronous request.
+    // Amount of seconds to block waiting for response to synchronous request.
     private int responseWaitTimeSec;
 
     /**
@@ -55,6 +56,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
     }
 
     /**
+     * Constructor.
      * 
      * @param clientProxyBase
      *            - a {@link IClientProxyBase} client proxy base implementation.
@@ -64,6 +66,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
     protected AbstractPlatformClientProxy(IClientProxyBase clientProxyBase, int responseWaitTimeSec)
     {
         ArgsChecker.errorOnNull(clientProxyBase, ARG_CLIENT_PROXY_BASE);
+        ArgsChecker.errorOnLessThan0(responseWaitTimeSec, ARG_RESPONSE_WAIT_TIME);
 
         this.clientProxyBase = clientProxyBase;
         this.responseWaitTimeSec = responseWaitTimeSec;
@@ -72,7 +75,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
     }
 
     /**
-     * Initialized platform client proxy.
+     * Initialize platform client proxy.
      * 
      * @param serviceIPv4Address
      *            - a {@link String} service IPv4 address to connect with.
@@ -146,17 +149,13 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
      * @param packet
      *            - a source {@link AbstractPacket} to notify remote service with.
      * @throws BridgeException
-     *             - throws {@link BridgeException} on network write failure.
+     *             - throws {@link BridgeException} on network send failure.
      */
     protected final void notify(AbstractPacket packet) throws BridgeException
     {
         clientProxyBase.sendPacket(packet);
     }
 
-    /**
-     * {@inheritDoc} Determine if packet received originated from a synchronous request. If yes, notify the future with
-     * result otherwise notify proxy with data.
-     */
     @Override
     public final void receive(AbstractPacket abstractPacket)
     {
@@ -182,7 +181,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
     }
 
     /**
-     * Receive an asynchronous response from the remote service.
+     * Receive response to asynchronous request from remote service.
      * 
      * @param abstractPacket
      *            - a {@link AbstractPacket} response.

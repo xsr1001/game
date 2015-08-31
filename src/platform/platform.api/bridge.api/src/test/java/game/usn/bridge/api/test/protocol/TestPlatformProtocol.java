@@ -25,8 +25,12 @@ import platform.bridge.api.protocol.AbstractPlatformProtocol;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class TestUSNProtocol
+public class TestPlatformProtocol
 {
+    // Public test data.
+    public static final AbstractPlatformProtocol PROT1 = new TestProtocolP1();
+    public static final AbstractPlatformProtocol PROT2 = new TestProtocolP2();
+
     // Reusable fields.
     private Exception ex;
 
@@ -120,5 +124,37 @@ public class TestUSNProtocol
         }
         Assert.assertNotNull(ex);
         Assert.assertTrue(ex instanceof ProtocolException);
+    }
+
+    /**
+     * Test protocol 1.
+     * 
+     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+     *
+     */
+    private static class TestProtocolP1 extends AbstractPlatformProtocol
+    {
+        public TestProtocolP1()
+        {
+            super();
+            registerPacket(1, TestAbstractPacket.PACKET1_ID.getClass());
+        }
+    }
+
+    /**
+     * Test protocol 2.
+     * 
+     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+     *
+     */
+    public static class TestProtocolP2 extends AbstractPlatformProtocol
+    {
+        public TestProtocolP2()
+        {
+            super();
+            registerPacket(1, TestAbstractPacket.PACKET1_ID.getClass());
+            registerPacket(2, TestAbstractPacket.PACKET2_ID.getClass());
+            registerPacket(3, TestAbstractPacket.PACKET3.getClass());
+        }
     }
 }
