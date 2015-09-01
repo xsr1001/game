@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.PlatformBridgeManager;
 import platform.core.api.exception.BridgeException;
 
@@ -108,9 +108,9 @@ public abstract class AbstractBridgeAdapter extends ChannelInboundHandlerAdapter
     /**
      * Retrieve proxy specific channel options.
      * 
-     * @return - a {@link ChannelOptions} object, defining basic options to initialize network channel with.
+     * @return - a {@link BridgeOptions} object, defining basic options to initialize network channel with.
      */
-    protected abstract ChannelOptions getChannelOptions();
+    protected abstract BridgeOptions getChannelOptions();
 
     /**
      * Retrieve proxy implementation specific name.

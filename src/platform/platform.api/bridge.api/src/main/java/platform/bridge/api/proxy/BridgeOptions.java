@@ -1,6 +1,6 @@
 /**
- * @file ChannelOptions.java
- * @brief ChannelOptions provides basic channel and connection options.
+ * @file BridgeOptions.java
+ * @brief BridgeOptions provides limited bridge related options.
  */
 
 package platform.bridge.api.proxy;
@@ -11,12 +11,12 @@ import java.util.Set;
 import platform.bridge.api.listener.IConnectionObserver;
 
 /**
- * ChannelOptions. Provides basic channel and connection options. This is just a container for various options.
+ * Bridge options provides limited bridge related options. This is just a simple container like object.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class ChannelOptions
+public class BridgeOptions
 {
     // Read timeout in seconds. Server option only.
     private int readTimeOutChannelExpirationSec;
@@ -33,7 +33,7 @@ public class ChannelOptions
     /**
      * No arg ctor.
      */
-    public ChannelOptions()
+    public BridgeOptions()
     {
         readTimeOutChannelExpirationSec = -1;
     }
@@ -51,7 +51,7 @@ public class ChannelOptions
      *            - a {@link Set}<{@link IConnectionObserver}> of connection listeners. Provides a way to notify
      *            external listeners about client connection events.
      */
-    public ChannelOptions(boolean isSSLEnabled, int readTimeoutSeconds, boolean server,
+    public BridgeOptions(boolean isSSLEnabled, int readTimeoutSeconds, boolean server,
         Set<IConnectionObserver> externalConnectionListenerSet)
     {
         this.SSLEnabled = isSSLEnabled;

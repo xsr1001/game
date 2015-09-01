@@ -28,10 +28,10 @@ public interface IConnectionObserver
     /**
      * Notify client connection observers.
      * 
-     * @param USNEnpoint
-     *            - a {@link String} USN end-point id.
+     * @param remoteService
+     *            - a {@link String} remote service id.
      * @param state
-     *            - a {@link EConnectionState} new state for given USN end-point.
+     *            - a {@link EConnectionState} new connection state of client connection.
      */
-    void notifyConnectionState(String USNEnpoint, EConnectionState state);
+    void notifyConnectionState(String remoteService, EConnectionState state);
 }

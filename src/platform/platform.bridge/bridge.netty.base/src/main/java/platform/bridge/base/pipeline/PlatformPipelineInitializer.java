@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.listener.IConnectionObserver;
 import platform.bridge.api.listener.IConnectionObserver.EConnectionState;
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.decoder.PlatformPacketDecoder;
 import platform.bridge.base.pipeline.encoder.PlatformPacketEncoder;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
@@ -54,7 +54,7 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     private static final String CHANNEL_OBSERVER_KEY = "channelObserverKey";
     private static final String CHANNEL_OPTIONS_KEY = "channelOptionsKey";
     public static final AttributeKey<Set<IChannelObserver>> CHANNEL_OBSERVER_ATR_KEY = AttributeKey.newInstance(CHANNEL_OBSERVER_KEY);
-    public static final AttributeKey<ChannelOptions> CHANNEL_OPTIONS_ATR_KEY = AttributeKey.newInstance(CHANNEL_OPTIONS_KEY);
+    public static final AttributeKey<BridgeOptions> CHANNEL_OPTIONS_ATR_KEY = AttributeKey.newInstance(CHANNEL_OPTIONS_KEY);
 
     // Handler names.
     private static final String HANDLER_TIMEOUT = "handler_timeout";
@@ -94,7 +94,7 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     {
         LOG.enterMethod();
 
-        ChannelOptions options = ch.attr(CHANNEL_OPTIONS_ATR_KEY).get();
+        BridgeOptions options = ch.attr(CHANNEL_OPTIONS_ATR_KEY).get();
         if (options == null)
         {
             throw new BridgeException(ERROR_NO_CHANNEL_OPTIONS);
@@ -158,9 +158,9 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
      * @param ch
      *            - a {@link Channel} instance to apply pipeline to.
      * @param options
-     *            - a {@link ChannelOptions} defining consumer specific configuration for given channel.
+     *            - a {@link BridgeOptions} defining consumer specific configuration for given channel.
      */
-    private void initBasePlatformPipeline(Channel ch, ChannelOptions options)
+    private void initBasePlatformPipeline(Channel ch, BridgeOptions options)
     {
         LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
 

@@ -1,12 +1,12 @@
 /**
  * @file ProtocolException.java
- * @brief  Protocol exception represents violation of data contract between two USN end-points.
+ * @brief  Protocol exception represents violation of data contract between platform services.
  */
 
 package platform.core.api.exception;
 
 /**
- * Protocol exception represents violation of data contract between two USN end-points.
+ * Protocol exception represents violation of data contract between platform services.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *

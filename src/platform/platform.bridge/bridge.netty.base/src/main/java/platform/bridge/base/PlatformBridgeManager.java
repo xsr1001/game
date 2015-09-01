@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import platform.bridge.api.listener.IChannelObserver;
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.PlatformPipelineInitializer;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.bridge.base.util.PlatformBridgeUtil;
@@ -87,12 +87,12 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      * @param servicePort
      *            - a network port to bind the service on. 0 represents wild-card port.
      * @param channelOptions
-     *            - an instance of {@link ChannelOptions} to provide additional bridge related parameters.
+     *            - an instance of {@link BridgeOptions} to provide additional bridge related parameters.
      * @throws BridgeException
      *             - throw {@link BridgeException} on service registration or server socket bind error.
      */
     public synchronized void registerServiceProxy(AbstractBridgeAdapter serviceProxy,
-        final Set<IChannelObserver> channelObserverSet, int servicePort, ChannelOptions channelOptions)
+        final Set<IChannelObserver> channelObserverSet, int servicePort, BridgeOptions channelOptions)
         throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PROXY, serviceProxy, ARG_SERVICE_PORT, servicePort, ARG_CHANNEL_OPTIONS,
@@ -161,13 +161,13 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      * @param remoteHostIPv4
      *            - a network IPv4 of remote host client is trying to connect to.
      * @param channelOptions
-     *            - an instance of {@link ChannelOptions} to provide additional bridge related parameters.
+     *            - an instance of {@link BridgeOptions} to provide additional bridge related parameters.
      * @throws BridgeException
      *             - throw {@link BridgeException} on client proxy registration or connection error.
      */
     public synchronized void registerClientProxy(AbstractBridgeAdapter clientProxy,
         final Set<IChannelObserver> channelObserverSet, int remoteHostPort, String remoteHostIPv4,
-        ChannelOptions channelOptions) throws BridgeException
+        BridgeOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_CLIENT_PROXY, clientProxy, ARG_REMOTE_PORT, remoteHostPort, ARG_REMOTE_HOST,
             remoteHostIPv4, ARG_CHANNEL_OPTIONS, channelOptions);

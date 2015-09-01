@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.listener.IConnectionObserver;
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.PlatformBridgeManager;
 
 /**
@@ -36,12 +36,12 @@ public class BridgeE2ETest
     private Exception ex;
 
     // USN service.
-    private static ChannelOptions serverOptions;
+    private static BridgeOptions serverOptions;
     private TestService testservice;
     Set<IChannelObserver> listenerSet;
 
     // USN client.
-    private static ChannelOptions clientOptions;
+    private static BridgeOptions clientOptions;
     private TestClient testClient;
     Set<IChannelObserver> listenerSetClient;
 
@@ -49,10 +49,10 @@ public class BridgeE2ETest
     public static void beforeClass()
     {
         Set<IConnectionObserver> connSet = new HashSet<IConnectionObserver>();
-        serverOptions = new ChannelOptions(false, 555, true, connSet);
+        serverOptions = new BridgeOptions(false, 555, true, connSet);
 
         Set<IConnectionObserver> connSetClient = new HashSet<IConnectionObserver>();
-        clientOptions = new ChannelOptions(false, 555, false, connSetClient);
+        clientOptions = new BridgeOptions(false, 555, false, connSetClient);
     }
 
     @Before

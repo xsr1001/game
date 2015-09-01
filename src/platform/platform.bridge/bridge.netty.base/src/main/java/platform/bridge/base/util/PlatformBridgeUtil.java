@@ -5,7 +5,7 @@
 
 package platform.bridge.base.util;
 
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 
 /**
  * Bridge utility functionality.
@@ -20,13 +20,13 @@ public class PlatformBridgeUtil
      * Channel options validator.
      * 
      * @param options
-     *            - source {@link ChannelOptions} to validate.
+     *            - source {@link BridgeOptions} to validate.
      * @param isServerOptions
      *            - validation may vary between client and server specific options.
      * @throws IllegalArgumentException
      *             - throw {@link IllegalArgumentException} if channel options are not valid.
      */
-    public static void validateChannelOptions(ChannelOptions options, boolean isServerOptions)
+    public static void validateChannelOptions(BridgeOptions options, boolean isServerOptions)
         throws IllegalArgumentException
     {
         // TODO: implement logic.

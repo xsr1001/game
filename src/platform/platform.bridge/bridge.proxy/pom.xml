@@ -15,10 +15,6 @@
   	</dependency>
   	<dependency>
   		<groupId>game</groupId>
-  		<artifactId>bridge.netty.base</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>game</groupId>
   		<artifactId>platform.core</artifactId>
   	</dependency>
   	<dependency>

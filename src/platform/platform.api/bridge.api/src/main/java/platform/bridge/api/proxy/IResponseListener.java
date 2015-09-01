@@ -13,8 +13,8 @@ import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 
 /**
- * Response listener defines capabilities for a proxy to receive data from network base. Additionally it defines basic
- * proxy capabilities for working with network base.
+ * Response listener defines capabilities for a proxy to receive data from network base. It defines additional network
+ * base specific requirements for a proxy.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
@@ -32,9 +32,9 @@ public interface IResponseListener extends IChannelObserver
     /**
      * Retrieve proxy specific channel options.
      * 
-     * @return - a {@link ChannelOptions} object, defining basic options to initialize network channel with.
+     * @return - a {@link BridgeOptions} object, defining basic options to initialize network channel with.
      */
-    ChannelOptions getChannelOptions();
+    BridgeOptions getChannelOptions();
 
     /**
      * Retrieve proxy implementation specific name.

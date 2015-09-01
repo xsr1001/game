@@ -35,7 +35,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import platform.bridge.api.listener.IChannelObserver;
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.PlatformPipelineInitializer;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
 import platform.core.api.exception.BridgeException;
@@ -110,12 +110,12 @@ public abstract class AbstractBridgeProvider
      * @param observerSet
      *            - a {@link Set}<{@link IChannelObserver}> to notify with server socket channel life-cycle events.
      * @param channelOptions
-     *            - a {@link ChannelOptions} options for child channels containing consumer specific options.
+     *            - a {@link BridgeOptions} options for child channels containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideServiceBridge(int servicePort, final PlatformPipelineInitializer pipelineInitializer,
-        final Set<IChannelObserver> observerSet, final ChannelOptions channelOptions) throws BridgeException
+        final Set<IChannelObserver> observerSet, final BridgeOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer,
             ARG_CHANNEL_OPTIONS, channelOptions);
@@ -196,13 +196,13 @@ public abstract class AbstractBridgeProvider
      * @param observerSet
      *            - a {@link Set}<{@link IChannelObserver}> to notify with client socket channel life-cycle events.
      * @param channelOptions
-     *            - a {@link ChannelOptions} options for child channels containing consumer specific options.
+     *            - a {@link BridgeOptions} options for child channels containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideClientBridge(final SocketAddress remoteAddress,
         final PlatformPipelineInitializer pipelineInitializer, final Set<IChannelObserver> observerSet,
-        final ChannelOptions channelOptions) throws BridgeException
+        final BridgeOptions channelOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_PIPELINE_INITIALIZER, pipelineInitializer, ARG_CHANNEL_OPTIONS, channelOptions);
 

@@ -1,12 +1,12 @@
 /**
  * @file PlatformException.java
- * @brief Platform exception for generic platform error handling.
+ * @brief Platform exception for generic platform error.
  */
 
 package platform.core.api.exception;
 
 /**
- * Platform exception for generic platform error handling.
+ * Platform exception for generic platform error.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *

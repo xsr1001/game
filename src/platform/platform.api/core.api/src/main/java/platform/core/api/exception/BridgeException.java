@@ -6,7 +6,7 @@
 package platform.core.api.exception;
 
 /**
- * Bridge exception represents any network or bridge specific error.
+ * Bridge exception represents any network or bridge specific errors.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *

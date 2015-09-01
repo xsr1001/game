@@ -30,7 +30,7 @@ public interface IClientProxyBase
      * Release a client proxy and cleanup.
      * 
      * @throws BridgeException
-     *             - throws {@link BridgeException} on release error.
+     *             - throws {@link BridgeException} on proxy release error.
      */
     void release() throws BridgeException;
 

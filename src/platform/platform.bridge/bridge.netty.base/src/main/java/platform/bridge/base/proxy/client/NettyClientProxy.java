@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
-import platform.bridge.api.proxy.ChannelOptions;
+import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.api.proxy.IClientProxyBase;
 import platform.bridge.api.proxy.IResponseListener;
 import platform.bridge.base.proxy.AbstractBridgeAdapter;
@@ -134,7 +134,7 @@ public class NettyClientProxy extends AbstractBridgeAdapter implements IClientPr
     }
 
     @Override
-    protected ChannelOptions getChannelOptions()
+    protected BridgeOptions getChannelOptions()
     {
         return responseListener.getChannelOptions();
     }
