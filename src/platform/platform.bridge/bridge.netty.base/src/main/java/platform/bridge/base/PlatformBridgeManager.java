@@ -1,6 +1,6 @@
 /**
  * @file PlatformBridgeManager.java
- * @brief PlatformBridgeManager provides functionality for registering service and client proxies on platform. 
+ * @brief PlatformBridgeManager provides functionality for registering service and client proxies on netty network base.. 
  */
 
 package platform.bridge.base;
@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.PlatformPipelineInitializer;
-import platform.bridge.base.proxy.AbstractBridgeAdapter;
+import platform.bridge.base.proxy.AbstractNettyBridgeAdapter;
 import platform.bridge.base.util.PlatformBridgeUtil;
 import platform.core.api.exception.BridgeException;
 
@@ -42,7 +42,7 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
     private static final String ARG_PROXY = "proxy";
     private static final String ARG_REMOTE_PORT = "remoteHostPort";
     private static final String ARG_REMOTE_HOST = "remoteHostIPv4";
-    private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
+    private static final String ARG_BRIDGE_OPTIONS = "bridgeOptions";
     private static final String ARG_CHANNEL_OBSERVERS = "channelObserversSet";
     private static final String ARG_LOCALHOST = "localhost";
 
@@ -79,8 +79,8 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      * Attempt to register service proxy and start the service.
      * 
      * @param serviceProxy
-     *            - an {@link AbstractBridgeAdapter} service data end-point which serves as a data sink and provides
-     *            service specific protocol stack.
+     *            - an {@link AbstractNettyBridgeAdapter} service data end-point which serves as a data sink and
+     *            provides service specific protocol stack.
      * @param channelObserverSet
      *            - a {@link Set} of {@link IChannelObserver} objects, containing interested channel observers. Service
      *            channel life-cycle events will be notified to provided observers.
@@ -91,19 +91,19 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      * @throws BridgeException
      *             - throw {@link BridgeException} on service registration or server socket bind error.
      */
-    public synchronized void registerServiceProxy(AbstractBridgeAdapter serviceProxy,
-        final Set<IChannelObserver> channelObserverSet, int servicePort, BridgeOptions channelOptions)
+    public synchronized void registerServiceProxy(AbstractNettyBridgeAdapter serviceProxy,
+        final Set<IChannelObserver> channelObserverSet, int servicePort, BridgeOptions bridgeOptions)
         throws BridgeException
     {
-        LOG.enterMethod(ARG_SERVICE_PROXY, serviceProxy, ARG_SERVICE_PORT, servicePort, ARG_CHANNEL_OPTIONS,
-            channelOptions);
+        LOG.enterMethod(ARG_SERVICE_PROXY, serviceProxy, ARG_SERVICE_PORT, servicePort, ARG_BRIDGE_OPTIONS,
+            bridgeOptions);
 
         ArgsChecker.errorOnNull(serviceProxy, ARG_SERVICE_PROXY);
-        ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
+        ArgsChecker.errorOnNull(bridgeOptions, ARG_BRIDGE_OPTIONS);
         ArgsChecker.errorOnNull(channelObserverSet, ARG_CHANNEL_OBSERVERS);
         ArgsChecker.errorOnLessThan0(servicePort, ARG_SERVICE_PORT);
 
-        PlatformBridgeUtil.validateChannelOptions(channelOptions, true);
+        PlatformBridgeUtil.validateBridgeOptions(bridgeOptions, Boolean.TRUE);
 
         // Check if given proxy has already been registered.
         boolean contains = false;
@@ -130,7 +130,8 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
         channelObserverSet.add(this);
 
         // Attempt to create the whole service stack and bind the service end-point.
-        provideServiceBridge(servicePort, new PlatformPipelineInitializer(serviceProxy), channelObserverSet, channelOptions);
+        provideServiceBridge(servicePort, new PlatformPipelineInitializer(serviceProxy), channelObserverSet,
+            bridgeOptions);
 
         try
         {
@@ -151,8 +152,8 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      * Attempt to register a client proxy and connect with remote host.
      * 
      * @param clientProxy
-     *            - an {@link AbstractBridgeAdapter} client data end-point which serves as a data sink and provides
-     *            client specific protocol stack.
+     *            - an {@link AbstractNettyBridgeAdapter} client proxy implementation which serves as a data sink and
+     *            provides client specific protocol stack.
      * @param channelListenerSet
      *            - a {@link Set} of {@link IChannelObserver} objects, containing interested channel observers. Client
      *            channel life-cycle events will be notified to provided listeners.
@@ -160,25 +161,24 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      *            - a network port of remote host client is trying to connect to.
      * @param remoteHostIPv4
      *            - a network IPv4 of remote host client is trying to connect to.
-     * @param channelOptions
-     *            - an instance of {@link BridgeOptions} to provide additional bridge related parameters.
+     * @param bridgeOptions
+     *            - an instance of {@link BridgeOptions} to provide additional bridge related options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on client proxy registration or connection error.
      */
-    public synchronized void registerClientProxy(AbstractBridgeAdapter clientProxy,
+    public synchronized void registerClientProxy(AbstractNettyBridgeAdapter clientProxy,
         final Set<IChannelObserver> channelObserverSet, int remoteHostPort, String remoteHostIPv4,
-        BridgeOptions channelOptions) throws BridgeException
+        BridgeOptions bridgeOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_CLIENT_PROXY, clientProxy, ARG_REMOTE_PORT, remoteHostPort, ARG_REMOTE_HOST,
-            remoteHostIPv4, ARG_CHANNEL_OPTIONS, channelOptions);
+            remoteHostIPv4, ARG_BRIDGE_OPTIONS, bridgeOptions);
 
         ArgsChecker.errorOnNull(clientProxy, ARG_SERVICE_PROXY);
-        ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
+        ArgsChecker.errorOnNull(bridgeOptions, ARG_BRIDGE_OPTIONS);
         ArgsChecker.errorOnNull(channelObserverSet, ARG_CHANNEL_OBSERVERS);
-        ArgsChecker.errorOnNull(remoteHostIPv4, ARG_CHANNEL_OBSERVERS);
+        ArgsChecker.errorOnNull(remoteHostIPv4, ARG_REMOTE_HOST);
         ArgsChecker.errorOnLessThan0(remoteHostPort, ARG_REMOTE_PORT);
-
-        PlatformBridgeUtil.validateChannelOptions(channelOptions, false);
+        PlatformBridgeUtil.validateBridgeOptions(bridgeOptions, Boolean.FALSE);
 
         // Check if given proxy has already been registered.
         boolean contains = false;
@@ -206,7 +206,7 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
 
         // Attempt to create the whole client stack and connect with remote host end-point.
         provideClientBridge(new InetSocketAddress(remoteHostIPv4, remoteHostPort), new PlatformPipelineInitializer(
-            clientProxy), channelObserverSet, channelOptions);
+            clientProxy), channelObserverSet, bridgeOptions);
 
         try
         {
@@ -219,7 +219,6 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
         {
             rwLock.writeLock().unlock();
         }
-
         LOG.exitMethod();
     }
 
@@ -227,11 +226,11 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
      * Unregister provided proxy.
      * 
      * @param proxy
-     *            - a {@link AbstractBridgeAdapter} proxy to unregister.
+     *            - a {@link AbstractNettyBridgeAdapter} proxy to unregister.
      * @throws BridgeException
      *             - throws {@link BridgeException} on unregister error.
      */
-    public synchronized void unregisterProxy(AbstractBridgeAdapter proxy) throws BridgeException
+    public synchronized void unregisterProxy(AbstractNettyBridgeAdapter proxy) throws BridgeException
     {
         ArgsChecker.errorOnNull(proxy, ARG_PROXY);
 

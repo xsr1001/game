@@ -20,7 +20,7 @@ import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.api.proxy.IClientProxyBase;
 import platform.bridge.api.proxy.IResponseListener;
-import platform.bridge.base.proxy.AbstractBridgeAdapter;
+import platform.bridge.base.proxy.AbstractNettyBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -29,9 +29,9 @@ import platform.core.api.exception.BridgeException;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class NettyClientProxy extends AbstractBridgeAdapter implements IClientProxyBase
+public class NettyClientProxy extends AbstractNettyBridgeAdapter implements IClientProxyBase
 {
-    // Errors, args, mesages.
+    // Errors, args, messages.
     private static final String ERROR_MSG_SEND = "Cannot send a message to remote service as channel is not connected.";
 
     // A flag determining if channel is active (socket has connected).
@@ -104,7 +104,6 @@ public class NettyClientProxy extends AbstractBridgeAdapter implements IClientPr
     @Override
     public final void channelActive(ChannelHandlerContext ctx) throws Exception
     {
-        super.channelActive(ctx);
         channel = ctx.channel();
         channelConnected.set(true);
     }
@@ -112,7 +111,6 @@ public class NettyClientProxy extends AbstractBridgeAdapter implements IClientPr
     @Override
     public final void channelInactive(ChannelHandlerContext ctx) throws Exception
     {
-        super.channelInactive(ctx);
         channelConnected.set(false);
     }
 
@@ -123,20 +121,20 @@ public class NettyClientProxy extends AbstractBridgeAdapter implements IClientPr
         {
             channelConnected.set(false);
         }
+
         responseListener.notifyChannelDown(proxyName);
     }
 
     @Override
     public final void notifyChannelUp(String proxyName, InetSocketAddress address)
     {
-        // No need to implement as channelActive() is enough for client proxy.
         responseListener.notifyChannelUp(proxyName, address);
     }
 
     @Override
-    protected BridgeOptions getChannelOptions()
+    protected BridgeOptions getBridgeOptions()
     {
-        return responseListener.getChannelOptions();
+        return responseListener.getBridgeOptions();
     }
 
     @Override

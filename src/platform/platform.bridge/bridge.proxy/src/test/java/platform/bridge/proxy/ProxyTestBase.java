@@ -49,7 +49,7 @@ public class ProxyTestBase
     protected int remoteHostPort = 1337;
     protected String remoteHostIPv4 = "remoteHostIPv4";
     protected Set<IChannelObserver> observerSet = new HashSet<IChannelObserver>();
-    protected BridgeOptions options = new BridgeOptions(false, 10, false, null);
+    protected static BridgeOptions options = new BridgeOptions();
     protected String testProxyName = "testProxy1";
     protected String testProxyName2 = "testProxy2";
 
@@ -66,6 +66,8 @@ public class ProxyTestBase
     {
         respoder = new Thread(asyncResponder);
         respoder.start();
+
+        options.set(BridgeOptions.KEY_IS_SERVER, Boolean.FALSE);
     }
 
     @AfterClass
@@ -117,7 +119,7 @@ public class ProxyTestBase
         }
 
         @Override
-        public BridgeOptions getChannelOptions()
+        public BridgeOptions getBridgeOptions()
         {
             return channelOptions;
         }

@@ -37,7 +37,7 @@ import java.util.Set;
 import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.PlatformPipelineInitializer;
-import platform.bridge.base.proxy.AbstractBridgeAdapter;
+import platform.bridge.base.proxy.AbstractNettyBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -56,7 +56,7 @@ public abstract class AbstractBridgeProvider
     private static final String ARG_WORKER_GROUP = "workerGroup";
     private static final String ARG_PIPELINE_INITIALIZER = "pipelineInitializer";
     private static final String ARG_SERVICE_PORT = "servicePort";
-    private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
+    private static final String ARG_BRIDGE_OPTIONS = "bridgeOptions";
     private static final String ARG_REMOTE_ADDRESS = "remoteAddress";
     private static final String ERROR_SOCKET_BIND = "Error binding server socket.";
     private static final String ERROR_CONNECT = "Error connecting with remote host: [%s].";
@@ -109,24 +109,24 @@ public abstract class AbstractBridgeProvider
      *            connections.
      * @param observerSet
      *            - a {@link Set}<{@link IChannelObserver}> to notify with server socket channel life-cycle events.
-     * @param channelOptions
-     *            - a {@link BridgeOptions} options for child channels containing consumer specific options.
+     * @param bridgeOptions
+     *            - a {@link BridgeOptions} options containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideServiceBridge(int servicePort, final PlatformPipelineInitializer pipelineInitializer,
-        final Set<IChannelObserver> observerSet, final BridgeOptions channelOptions) throws BridgeException
+        final Set<IChannelObserver> observerSet, final BridgeOptions bridgeOptions) throws BridgeException
     {
         LOG.enterMethod(ARG_SERVICE_PORT, servicePort, ARG_PIPELINE_INITIALIZER, pipelineInitializer,
-            ARG_CHANNEL_OPTIONS, channelOptions);
+            ARG_BRIDGE_OPTIONS, bridgeOptions);
 
+        ArgsChecker.errorOnNull(pipelineInitializer, ARG_PIPELINE_INITIALIZER);
+        ArgsChecker.errorOnNull(bridgeOptions, ARG_BRIDGE_OPTIONS);
+        ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
+        NetworkUtils.validateNetworkPort(servicePort);
         try
-        {
-            ArgsChecker.errorOnNull(pipelineInitializer, ARG_PIPELINE_INITIALIZER);
-            ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
-            ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
-            NetworkUtils.validateNetworkPort(servicePort);
 
+        {
             ServerBootstrap serverBootstrap = createBaseServiceUSNStack(
                 new InetSocketAddress(Inet4Address.getLocalHost(), servicePort), this.workerGroup, pipelineInitializer);
 
@@ -135,8 +135,7 @@ public abstract class AbstractBridgeProvider
                 observerSet));
 
             // Add channel options.
-            serverBootstrap.childAttr(PlatformPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
-
+            serverBootstrap.childAttr(PlatformPipelineInitializer.BRIDGE_OPTIONS_ATR_KEY, bridgeOptions);
 
             serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
             serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
@@ -189,39 +188,41 @@ public abstract class AbstractBridgeProvider
      * extended {@link PlatformPipelineInitializer} with the client specific stack and protocol handlers.
      * 
      * @param remoteAddress
-     *            - a valid remote-host {@link SocketAddress}.
+     *            - a valid remote host {@link SocketAddress} address.
      * @param pipelineInitializer
      *            - an instance of {@link PlatformPipelineInitializer} to initialize platform client stack for outgoing
      *            connection.
      * @param observerSet
-     *            - a {@link Set}<{@link IChannelObserver}> to notify with client socket channel life-cycle events.
-     * @param channelOptions
-     *            - a {@link BridgeOptions} options for child channels containing consumer specific options.
+     *            - a {@link Set} of {@link IChannelObserver} object to notify with client socket channel life-cycle
+     *            events.
+     * @param bridgeOptions
+     *            - a {@link BridgeOptions} options containing consumer specific options.
      * @throws BridgeException
      *             - throw {@link BridgeException} on error.
      */
     protected void provideClientBridge(final SocketAddress remoteAddress,
         final PlatformPipelineInitializer pipelineInitializer, final Set<IChannelObserver> observerSet,
-        final BridgeOptions channelOptions) throws BridgeException
+        final BridgeOptions bridgeOptions) throws BridgeException
     {
-        LOG.enterMethod(ARG_PIPELINE_INITIALIZER, pipelineInitializer, ARG_CHANNEL_OPTIONS, channelOptions);
+        LOG.enterMethod(ARG_PIPELINE_INITIALIZER, pipelineInitializer, ARG_BRIDGE_OPTIONS, bridgeOptions);
+
+        ArgsChecker.errorOnNull(pipelineInitializer, ARG_PIPELINE_INITIALIZER);
+        ArgsChecker.errorOnNull(bridgeOptions, ARG_BRIDGE_OPTIONS);
+        ArgsChecker.errorOnNull(remoteAddress, ARG_REMOTE_ADDRESS);
+        ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
 
         try
         {
-            ArgsChecker.errorOnNull(pipelineInitializer, ARG_PIPELINE_INITIALIZER);
-            ArgsChecker.errorOnNull(channelOptions, ARG_CHANNEL_OPTIONS);
-            ArgsChecker.errorOnNull(remoteAddress, ARG_REMOTE_ADDRESS);
-            ArgsChecker.errorOnNull(this.workerGroup, ARG_WORKER_GROUP);
-
             Bootstrap clientBootstrap = createBaseClientUSNStack(remoteAddress, workerGroup, pipelineInitializer);
 
             // Add channel listeners.
             clientBootstrap.attr(PlatformPipelineInitializer.CHANNEL_OBSERVER_ATR_KEY, new HashSet<IChannelObserver>(
                 observerSet));
 
-            // Add channel options.
-            clientBootstrap.attr(PlatformPipelineInitializer.CHANNEL_OPTIONS_ATR_KEY, channelOptions);
+            // Add bridge options.
+            clientBootstrap.attr(PlatformPipelineInitializer.BRIDGE_OPTIONS_ATR_KEY, bridgeOptions);
 
+            // Add client options.
             clientBootstrap.option(ChannelOption.TCP_NODELAY, true);
             clientBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             clientBootstrap.option(ChannelOption.SO_LINGER, 5);
@@ -235,25 +236,19 @@ public abstract class AbstractBridgeProvider
                     if (future.isSuccess())
                     {
                         notifyObservers(observerSet,
-                            future.channel().pipeline().get(AbstractBridgeAdapter.class).getName(),
+                            future.channel().pipeline().get(AbstractNettyBridgeAdapter.class).getName(),
                             (InetSocketAddress) future.channel().remoteAddress(), true);
-
                         bridgeChannelSet.add(future.channel());
                     }
                     else
                     {
                         notifyObservers(observerSet,
-                            future.channel().pipeline().get(AbstractBridgeAdapter.class).getName(), null, false);
+                            future.channel().pipeline().get(AbstractNettyBridgeAdapter.class).getName(), null, false);
                         LOG.error(String.format(ERROR_CONNECT, future.channel().remoteAddress()));
                         return;
                     }
                 }
             });
-        }
-        catch (IllegalArgumentException ie)
-        {
-            LOG.error(ERROR_ILLEGAL_ARGUMENT, ie);
-            throw new BridgeException(ERROR_ILLEGAL_ARGUMENT, ie);
         }
         catch (Exception e)
         {
@@ -275,8 +270,9 @@ public abstract class AbstractBridgeProvider
      * @param workerGroup
      *            - an initialized {@link EventLoopGroup} for handling I/O events.
      * @param pipelineInitializer
-     *            - an instance of {@link PlatformPipelineInitializer} to provide new network stack for incoming connections.
-     *            Service should have extended initializer by providing service specific pipeline items and protocol.
+     *            - an instance of {@link PlatformPipelineInitializer} to provide new network stack for incoming
+     *            connections. Service should have extended initializer by providing service specific pipeline items and
+     *            protocol.
      * 
      * @return - a ready to bind {@link ServerBootstrap}.
      */
@@ -300,8 +296,9 @@ public abstract class AbstractBridgeProvider
      * @param workerGroup
      *            - an initialized {@link EventLoopGroup} for handling I/O events.
      * @param pipelineInitializer
-     *            - an instance of {@link PlatformPipelineInitializer} to provide new network stack for remote connections.
-     *            Client should have extended initializer by providing client specific pipeline items and protocol.
+     *            - an instance of {@link PlatformPipelineInitializer} to provide new network stack for remote
+     *            connections. Client should have extended initializer by providing client specific pipeline items and
+     *            protocol.
      * 
      * @return - a ready to connect {@link Bootstrap}.
      */
@@ -337,7 +334,7 @@ public abstract class AbstractBridgeProvider
                         // Guard bridge from observer exceptions.
                         try
                         {
-                            observer.notifyChannelDown(channel.pipeline().get(AbstractBridgeAdapter.class).getName());
+                            observer.notifyChannelDown(channel.pipeline().get(AbstractNettyBridgeAdapter.class).getName());
                         }
                         catch (NullPointerException npe)
                         {

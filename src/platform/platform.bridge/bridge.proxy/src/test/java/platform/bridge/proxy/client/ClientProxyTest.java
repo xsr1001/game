@@ -114,7 +114,7 @@ public class ClientProxyTest extends ProxyTestBase
         Assert.assertEquals(remoteHostIPv4, remoteHostIPv4Result);
         Assert.assertEquals(remoteHostPort, remoteHostPortResult.intValue());
         Assert.assertEquals(testProxyName, testProxy1.getName());
-        Assert.assertEquals(options, testProxy1.getChannelOptions());
+        Assert.assertEquals(options, testProxy1.getBridgeOptions());
     }
 
     /**
@@ -153,8 +153,11 @@ public class ClientProxyTest extends ProxyTestBase
 
         try
         {
-            testAsynchronousClientProxy = new TestClientProxy(new BridgeOptions(false, 10, false, null),
-                testProxyName2, PROT1, new HashSet<IChannelObserver>(), clientProxyBase, 3);
+            BridgeOptions bo = new BridgeOptions();
+            bo.set(BridgeOptions.KEY_IS_SERVER, Boolean.FALSE);
+
+            testAsynchronousClientProxy = new TestClientProxy(bo, testProxyName2, PROT1,
+                new HashSet<IChannelObserver>(), clientProxyBase, 3);
             testAsynchronousClientProxy.initialize(remoteHostIPv4, remoteHostPort);
         }
         catch (Exception e)
@@ -237,8 +240,10 @@ public class ClientProxyTest extends ProxyTestBase
 
         try
         {
-            testAsynchronousClientProxy = new TestClientProxy(new BridgeOptions(false, 10, false, null),
-                testProxyName2, PROT2, new HashSet<IChannelObserver>(), clientProxyBase, 3);
+            BridgeOptions bo = new BridgeOptions();
+            bo.set(BridgeOptions.KEY_IS_SERVER, Boolean.FALSE);
+            testAsynchronousClientProxy = new TestClientProxy(bo, testProxyName2, PROT2,
+                new HashSet<IChannelObserver>(), clientProxyBase, 3);
             testAsynchronousClientProxy.initialize(remoteHostIPv4, remoteHostPort);
         }
         catch (Exception e)

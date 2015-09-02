@@ -25,7 +25,7 @@ import platform.bridge.api.listener.IConnectionObserver.EConnectionState;
 import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.decoder.PlatformPacketDecoder;
 import platform.bridge.base.pipeline.encoder.PlatformPacketEncoder;
-import platform.bridge.base.proxy.AbstractBridgeAdapter;
+import platform.bridge.base.proxy.AbstractNettyBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
@@ -45,16 +45,16 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     private static final String MSG_NEW_CONNECTION_FORMAT = "New %s with host: [%s].";
     private static final String MSG_NEW_CONNECTION1 = "client connection accepted";
     private static final String MSG_NEW_CONNECTION2 = "remote connection established";
-    private static final String ARG_CHANNEL_OPTIONS = "channelOptions";
+    private static final String ARG_BRIDGE_OPTIONS = "bridgeOptions";
     private static final String ARG_CONSUMER_PROXY = "consumerProxy";
     private static final String ARG_CONSUMER_PROTOCOL = "consumerProtocol";
     private static final String ERROR_NO_CHANNEL_OPTIONS = "Cannot retrieve channel options attribute from channel.";
 
     // Channel attribute keys.
     private static final String CHANNEL_OBSERVER_KEY = "channelObserverKey";
-    private static final String CHANNEL_OPTIONS_KEY = "channelOptionsKey";
+    private static final String BRIDGE_OPTIONS_KEY = "bridgeOptionsKey";
     public static final AttributeKey<Set<IChannelObserver>> CHANNEL_OBSERVER_ATR_KEY = AttributeKey.newInstance(CHANNEL_OBSERVER_KEY);
-    public static final AttributeKey<BridgeOptions> CHANNEL_OPTIONS_ATR_KEY = AttributeKey.newInstance(CHANNEL_OPTIONS_KEY);
+    public static final AttributeKey<BridgeOptions> BRIDGE_OPTIONS_ATR_KEY = AttributeKey.newInstance(BRIDGE_OPTIONS_KEY);
 
     // Handler names.
     private static final String HANDLER_TIMEOUT = "handler_timeout";
@@ -62,22 +62,20 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     private static final String HANDLER_FRAME_ENCODER = "handler_frame_encoder";
     private static final String HANDLER_PACKET_DECODER = "handler_packet_decoder";
     private static final String HANDLER_PACKET_ENCODER = "handler_packet_encoder";
-    // private static final String HANDLER_CONSUMER_DECODER = "handler_consumer_decoder_%s";
-    // private static final String HANDLER_CONSUMER_ENCODER = "handler_consumer_encoder_%s";
     private static final String HANDLER_PROXY = "handler_proxy";
 
     // In/Out packet data end-point.
-    private AbstractBridgeAdapter consumerProxy;
+    private AbstractNettyBridgeAdapter consumerProxy;
 
     /**
      * Ctor.
      * 
      * @param consumerProxy
-     *            - an implementation of {@link AbstractBridgeAdapter} that will define actual consumer end-point. All
-     *            incoming packets will be routed to it. Proxy should contain consumer specific protocol object and
+     *            - an implementation of {@link AbstractNettyBridgeAdapter} that will define actual consumer end-point.
+     *            All incoming packets will be routed to it. Proxy should contain consumer specific protocol object and
      *            optionally additional pipeline in and out handlers.
      */
-    public PlatformPipelineInitializer(AbstractBridgeAdapter consumerProxy)
+    public PlatformPipelineInitializer(AbstractNettyBridgeAdapter consumerProxy)
     {
         ArgsChecker.errorOnNull(consumerProxy, ARG_CONSUMER_PROXY);
         ArgsChecker.errorOnNull(consumerProxy.getProtocol(), ARG_CONSUMER_PROTOCOL);
@@ -90,11 +88,12 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
      * outgoing data.
      */
     @Override
+    @SuppressWarnings("unchecked")
     protected void initChannel(Channel ch) throws Exception
     {
         LOG.enterMethod();
 
-        BridgeOptions options = ch.attr(CHANNEL_OPTIONS_ATR_KEY).get();
+        BridgeOptions options = ch.attr(BRIDGE_OPTIONS_ATR_KEY).get();
         if (options == null)
         {
             throw new BridgeException(ERROR_NO_CHANNEL_OPTIONS);
@@ -109,13 +108,16 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
         {
             hostAddress = ((InetSocketAddress) ch.localAddress()).getAddress().toString();
         }
-        LOG.info(String.format(MSG_NEW_CONNECTION_FORMAT, options.isServer() ? MSG_NEW_CONNECTION1
-            : MSG_NEW_CONNECTION2, hostAddress));
+        LOG.info(String.format(MSG_NEW_CONNECTION_FORMAT,
+            (Boolean) options.get(BridgeOptions.KEY_IS_SERVER).get() ? MSG_NEW_CONNECTION1 : MSG_NEW_CONNECTION2,
+            hostAddress));
 
         // Notify server connection listeners if any.
-        if (options.isServer() && options.getConnectionListenerSet() != null)
+        if ((Boolean) options.get(BridgeOptions.KEY_IS_SERVER).get()
+            && options.get(BridgeOptions.KEY_CONNECTION_LISTENER_SET) != null)
         {
-            for (IConnectionObserver listener : options.getConnectionListenerSet())
+            for (IConnectionObserver listener : (Set<IConnectionObserver>) options.get(
+                BridgeOptions.KEY_CONNECTION_LISTENER_SET).get())
             {
                 listener.notifyConnectionState(ch.toString(), EConnectionState.TRANSPORT_UP);
             }
@@ -123,26 +125,6 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
 
         // Initialize base platform pipeline with non consumer modifiable handler chain.
         initBasePlatformPipeline(ch, options);
-
-        // // Add additional consumer specific in handlers.
-        // if (this.consumerProxy.getInHandlerList() != null)
-        // {
-        // for (ChannelHandler handler : consumerProxy.getInHandlerList())
-        // {
-        // ch.pipeline().addLast(String.format(HANDLER_CONSUMER_DECODER, handler.getClass().getSimpleName()),
-        // handler);
-        // }
-        // }
-        //
-        // // Add additional consumer specific out handlers.
-        // if (this.consumerProxy.getOutHandlerList() != null)
-        // {
-        // for (ChannelHandler handler : consumerProxy.getOutHandlerList())
-        // {
-        // ch.pipeline().addLast(String.format(HANDLER_CONSUMER_ENCODER, handler.getClass().getSimpleName()),
-        // handler);
-        // }
-        // }
 
         // Add actual data consumer end-point.
         ch.pipeline().addLast(HANDLER_PROXY, consumerProxy);
@@ -162,13 +144,16 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
      */
     private void initBasePlatformPipeline(Channel ch, BridgeOptions options)
     {
-        LOG.enterMethod(ARG_CHANNEL_OPTIONS, options);
+        LOG.enterMethod(ARG_BRIDGE_OPTIONS, options);
 
         // Enable read timeout handler for incoming connections.
-        if (options.isServer() && options.isEnableReadTimeoutHandler())
+        if ((Boolean) options.get(BridgeOptions.KEY_IS_SERVER).get()
+            && options.get(BridgeOptions.KEY_READ_TIMEOUT_SEC) != null)
         {
-            ch.pipeline().addLast(HANDLER_TIMEOUT,
-                new ReadTimeoutHandler(options.getReadTimeOutChannelExpirationSec(), TimeUnit.SECONDS));
+            ch.pipeline().addLast(
+                HANDLER_TIMEOUT,
+                new ReadTimeoutHandler((Integer) options.get(BridgeOptions.KEY_READ_TIMEOUT_SEC).get(),
+                    TimeUnit.SECONDS));
         }
 
         // Add frame decoder and encoder.
@@ -189,11 +174,11 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     /**
      * Getter for abstract data proxy.
      * 
-     * @return - return {@link AbstractBridgeAdapter} associated with this connection.
+     * @return - return {@link AbstractNettyBridgeAdapter} associated with this connection.
      */
-    public AbstractBridgeAdapter getConsumerProxy()
+    public AbstractNettyBridgeAdapter getConsumerProxy()
     {
-        return this.consumerProxy;
+        return consumerProxy;
     }
 
     /**
@@ -203,7 +188,7 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(this.getClass().getName());
+        sb.append(getClass().getName());
         sb.append(" for proxy: [").append(consumerProxy.getName()).append("] ");
         return sb.toString();
     }

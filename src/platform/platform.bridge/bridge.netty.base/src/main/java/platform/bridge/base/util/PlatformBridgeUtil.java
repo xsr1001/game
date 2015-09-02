@@ -15,20 +15,24 @@ import platform.bridge.api.proxy.BridgeOptions;
  */
 public class PlatformBridgeUtil
 {
+    private static final String ERROR_INVALID_BRIDGE_OPTIONS = "Validation of provided bridge options failed.";
 
     /**
-     * Channel options validator.
+     * Bridge options validator.
      * 
      * @param options
      *            - source {@link BridgeOptions} to validate.
      * @param isServerOptions
-     *            - validation may vary between client and server specific options.
+     *            - validation may vary between client and server specific options. If null, validate for both.
      * @throws IllegalArgumentException
-     *             - throw {@link IllegalArgumentException} if channel options are not valid.
+     *             - throw {@link IllegalArgumentException} if bridge options are not valid.
      */
-    public static void validateChannelOptions(BridgeOptions options, boolean isServerOptions)
+    public static void validateBridgeOptions(BridgeOptions options, Boolean isServerOptions)
         throws IllegalArgumentException
     {
-        // TODO: implement logic.
+        if (options == null || options.get(BridgeOptions.KEY_IS_SERVER) == null)
+        {
+            throw new IllegalArgumentException(ERROR_INVALID_BRIDGE_OPTIONS);
+        }
     }
 }

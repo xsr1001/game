@@ -5,119 +5,107 @@
 
 package platform.bridge.api.proxy;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import platform.bridge.api.listener.IConnectionObserver;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * Bridge options provides limited bridge related options. This is just a simple container like object.
+ * Bridge options provides limited bridge related options. This is just a simple container for options.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
 public class BridgeOptions
 {
-    // Read timeout in seconds. Server option only.
-    private int readTimeOutChannelExpirationSec;
-
-    // Enable or disable SSL.
-    private boolean SSLEnabled;
-
-    // Determines if options are server or client specific.
-    private boolean server;
-
-    // Listeners for client connection event. Server option only.
-    Set<IConnectionObserver> connectionListenerSet;
+    // Bridge option keys.
+    public static final String KEY_READ_TIMEOUT_SEC = "readTimeoutSec";
+    public static final String KEY_SSL_ENABLED = "SSLEnabled";
+    public static final String KEY_IS_SERVER = "isServer";
+    public static final String KEY_CONNECTION_LISTENER_SET = "connectionListenerSet";
 
     /**
-     * No arg ctor.
+     * Represents individual bridge option.
+     * 
+     * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+     *
+     * @param <T>
      */
-    public BridgeOptions()
+    public class BridgeOption<T>
     {
-        readTimeOutChannelExpirationSec = -1;
+        // Value of option.
+        private T value;
+
+        /**
+         * Constructor.
+         * 
+         * @param value
+         *            - A template type value of the option.
+         */
+        protected BridgeOption(T value)
+        {
+            this.value = value;
+        }
+
+        /**
+         * Retrieve value of this option.
+         * 
+         * @return
+         */
+        public T get()
+        {
+            return value;
+        }
     }
+
+    // Bridge options container.
+    @SuppressWarnings("rawtypes")
+    private Map<String, BridgeOption> optionsMap;
 
     /**
      * Ctor.
-     * 
-     * @param isSSLEnabled
-     *            - enables SSL encryption between USN end-points.
-     * @param readTimeoutSeconds
-     *            - set read timeout amount of seconds.
-     * @param server
-     *            - determines whether these options are server specific or client specific.
-     * @param externalConnectionListenerSet
-     *            - a {@link Set}<{@link IConnectionObserver}> of connection listeners. Provides a way to notify
-     *            external listeners about client connection events.
      */
-    public BridgeOptions(boolean isSSLEnabled, int readTimeoutSeconds, boolean server,
-        Set<IConnectionObserver> externalConnectionListenerSet)
+    @SuppressWarnings("rawtypes")
+    public BridgeOptions()
     {
-        this.SSLEnabled = isSSLEnabled;
-        this.server = server;
-        this.connectionListenerSet = externalConnectionListenerSet == null ? new HashSet<IConnectionObserver>()
-            : new HashSet<IConnectionObserver>(externalConnectionListenerSet);
-        this.readTimeOutChannelExpirationSec = readTimeoutSeconds;
+        optionsMap = new HashMap<String, BridgeOptions.BridgeOption>();
     }
 
-    // Getters and setters.
-
-    public boolean isSSLEnabled()
+    /**
+     * Retrieve a bridge option value.
+     * 
+     * @param name
+     *            - a {@link String} bridge option value.
+     * @return - a value of the bridge option.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> BridgeOption<T> get(String name)
     {
-        return SSLEnabled;
+        return optionsMap.get(name);
     }
 
-    public void setSSLEnabled(boolean sSLEnabled)
+    /**
+     * Sets a bridge option.
+     * 
+     * @param key
+     *            - a {@link String} option key.
+     * @param value
+     *            - a templated type option value.
+     */
+    public <T> void set(String key, T value)
     {
-        SSLEnabled = sSLEnabled;
+        optionsMap.put(key, new BridgeOption<T>(value));
     }
 
-    public int getReadTimeOutChannelExpirationSec()
-    {
-        return readTimeOutChannelExpirationSec;
-    }
-
-    public void setReadTimeOutChannelExpirationSec(int readTimeOutChannelExpirationSec)
-    {
-        this.readTimeOutChannelExpirationSec = readTimeOutChannelExpirationSec;
-    }
-
-    public boolean isEnableReadTimeoutHandler()
-    {
-        return this.readTimeOutChannelExpirationSec != -1;
-    }
-
-    public boolean isServer()
-    {
-        return server;
-    }
-
-    public void setServer(boolean server)
-    {
-        this.server = server;
-    }
-
-    public Set<IConnectionObserver> getConnectionListenerSet()
-    {
-        return connectionListenerSet;
-    }
-
-    public void setConnectionListenerSet(Set<IConnectionObserver> connectionListenerSet)
-    {
-        this.connectionListenerSet = connectionListenerSet;
-    }
-
+    @SuppressWarnings("rawtypes")
     @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder(this.getClass().getName());
         sb.append(":").append(System.lineSeparator());
-        sb.append("server").append("-->").append(server).append(System.lineSeparator());
-        sb.append("SSLEnabled").append("-->").append(SSLEnabled).append(System.lineSeparator());
-        sb.append("readTimeOutChannelExpirationSec").append("-->").append(readTimeOutChannelExpirationSec).append(
-            System.lineSeparator());
-        sb.append("connectionListenerSet").append("-->").append(connectionListenerSet).append(System.lineSeparator());
+
+        for (Map.Entry<String, BridgeOption> entry : optionsMap.entrySet())
+        {
+            sb.append(entry.getKey()).append("-->").append(entry.getValue()).append(System.lineSeparator());
+        }
 
         return sb.toString();
     }

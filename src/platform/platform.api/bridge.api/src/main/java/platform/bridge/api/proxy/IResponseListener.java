@@ -30,11 +30,11 @@ public interface IResponseListener extends IChannelObserver
     void receive(AbstractPacket abstractPacket);
 
     /**
-     * Retrieve proxy specific channel options.
+     * Retrieve proxy specific bridge options.
      * 
      * @return - a {@link BridgeOptions} object, defining basic options to initialize network channel with.
      */
-    BridgeOptions getChannelOptions();
+    BridgeOptions getBridgeOptions();
 
     /**
      * Retrieve proxy implementation specific name.

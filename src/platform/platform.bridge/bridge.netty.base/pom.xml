@@ -25,9 +25,5 @@
   		<groupId>game</groupId>
   		<artifactId>bridge.api</artifactId>
   	</dependency>
-  	<dependency>
-  		<groupId>game</groupId>
-  		<artifactId>service.api</artifactId>
-  	</dependency>
   </dependencies>
 </project>
