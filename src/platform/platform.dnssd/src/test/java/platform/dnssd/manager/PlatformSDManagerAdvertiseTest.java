@@ -201,8 +201,13 @@ public class PlatformSDManagerAdvertiseTest implements ServiceListener
         {
             ex = e;
         }
+        Exception exl = ex;
+        System.out.println(exl);
+        System.out.println(exl.getMessage());
+        System.out.println(exl.getLocalizedMessage());
+
         Assert.assertNotNull(ex);
-        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
+        Assert.assertTrue(ex.getMessage().startsWith("Service discovery manager has not been initialized yet."));
         ex = null;
 
         try
@@ -214,7 +219,7 @@ public class PlatformSDManagerAdvertiseTest implements ServiceListener
             ex = e;
         }
         Assert.assertNotNull(ex);
-        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
+        Assert.assertTrue(ex.getMessage().startsWith("Service discovery manager has not been initialized yet."));
         ex = null;
     }
 

@@ -142,7 +142,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
             ex = e;
         }
         Assert.assertNotNull(ex);
-        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
+        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Service discovery manager has not been initialized yet."));
         ex = null;
 
         try
@@ -154,7 +154,7 @@ public class PlatformSDManagerBrowseTest implements ISDListener
             ex = e;
         }
         Assert.assertNotNull(ex);
-        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Sevice discovery manager has not been initialized yet."));
+        Assert.assertTrue(ex.getLocalizedMessage().startsWith("Service discovery manager has not been initialized yet."));
         ex = null;
     }
 

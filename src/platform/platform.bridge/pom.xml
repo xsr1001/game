@@ -10,7 +10,6 @@
   <name>game-platform-bridge</name>
   <description>Platform bridge functionality.</description>
   <modules>
-  	<module>platform.bridge.base</module>
   	<module>bridge.netty.base</module>
   	<module>bridge.proxy</module>
   </modules>
