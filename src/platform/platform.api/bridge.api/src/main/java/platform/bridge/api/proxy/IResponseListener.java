@@ -26,8 +26,10 @@ public interface IResponseListener extends IChannelObserver
      * 
      * @param abstractPacket
      *            - a {@link AbstractPacket} to receive.
+     * @param senderIdentifier
+     *            - a {@link String} sender identifier.
      */
-    void receive(AbstractPacket abstractPacket);
+    void receive(AbstractPacket abstractPacket, String senderIdentifier);
 
     /**
      * Retrieve proxy specific bridge options.

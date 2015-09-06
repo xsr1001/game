@@ -1,5 +1,5 @@
 /**
- * @file IClientProxy.java
+ * @file IClientProxyBase.java
  * @brief Client proxy base defines network base implementation independent client proxy capabilities.
  */
 

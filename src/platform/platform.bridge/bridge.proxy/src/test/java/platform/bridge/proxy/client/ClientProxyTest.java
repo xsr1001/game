@@ -260,7 +260,7 @@ public class ClientProxyTest extends ProxyTestBase
             testAsynchronousClientProxy.notify(PACKET1_ID);
             long post = System.currentTimeMillis();
             Assert.assertTrue(post - pre < 3 * 1000);
-            testAsynchronousClientProxy.receive(PACKET3);
+            testAsynchronousClientProxy.receive(PACKET3, null);
         }
         catch (Exception e)
         {

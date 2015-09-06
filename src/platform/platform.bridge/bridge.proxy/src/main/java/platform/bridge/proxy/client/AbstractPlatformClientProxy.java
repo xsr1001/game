@@ -157,7 +157,7 @@ public abstract class AbstractPlatformClientProxy implements IResponseListener
     }
 
     @Override
-    public final void receive(AbstractPacket abstractPacket)
+    public final void receive(AbstractPacket abstractPacket, String senderIdentifier)
     {
         UUID packetId = null;
         if (abstractPacket instanceof ITransportIdentifiable)

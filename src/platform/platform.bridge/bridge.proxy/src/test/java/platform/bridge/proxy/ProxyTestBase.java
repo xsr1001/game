@@ -289,7 +289,7 @@ public class ProxyTestBase
                     if (requestQueue.size() > 0)
                     {
                         AbstractPacket pack = requestQueue.poll();
-                        testAsynchronousClientProxy.receive(pack);
+                        testAsynchronousClientProxy.receive(pack, null);
                     }
                     Thread.sleep(1000);
                 }

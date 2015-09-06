@@ -1,9 +1,9 @@
 /**
- * @file NettyClientProxy.java
- * @brief Netty client proxy defines netty specific client proxy functionality.
+ * @file NettyServiceProxy.java
+ * @brief Netty service proxy defines netty specific service proxy functionality.
  */
 
-package platform.bridge.base.proxy.client;
+package platform.bridge.base.proxy.service;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -11,6 +11,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -18,27 +20,27 @@ import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.BridgeOptions;
-import platform.bridge.api.proxy.IClientProxyBase;
 import platform.bridge.api.proxy.IResponseListener;
+import platform.bridge.api.proxy.IServiceProxyBase;
 import platform.bridge.base.proxy.AbstractNettyBridgeAdapter;
 import platform.core.api.exception.BridgeException;
 
 /**
- * Netty client proxy defines netty specific client proxy functionality.
+ * Netty service proxy defines netty specific service proxy functionality.
  * 
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public final class NettyClientProxy extends AbstractNettyBridgeAdapter implements IClientProxyBase
+public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implements IServiceProxyBase
 {
     // Errors, args, messages.
-    private static final String ERROR_MSG_SEND = "Cannot send a message to remote service as channel is not connected.";
+    private static final String ERROR_MSG_SEND = "Cannot send response to client as channel is not connected.";
 
-    // A flag determining if channel is active (socket has connected).
-    private AtomicBoolean channelConnected;
+    // A flag determining if channel is active (server socket channel has been bound).
+    private AtomicBoolean channelBound;
 
-    // Client channel.
-    private Channel channel;
+    // Client channel map.
+    private Map<String, Channel> clientChannelMap;
 
     // Response listener for receiving service responses.
     private IResponseListener responseListener;
@@ -46,17 +48,17 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     /**
      * Constructor.
      */
-    public NettyClientProxy()
+    public NettyServiceProxy()
     {
         super();
-        channelConnected = new AtomicBoolean();
+        clientChannelMap = new HashMap<String, Channel>();
+        channelBound = new AtomicBoolean();
     }
 
     @Override
-    public void initialize(String serviceIPv4Address, Integer servicePort, IResponseListener responseListener)
-        throws BridgeException
+    public void initialize(Integer servicePort, IResponseListener responseListener) throws BridgeException
     {
-        super.initialize(serviceIPv4Address, servicePort);
+        super.initialize(null, servicePort);
         this.responseListener = responseListener;
     }
 
@@ -64,22 +66,20 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     public void release() throws BridgeException
     {
         super.release();
-        channel.disconnect();
+        for (Channel channel : clientChannelMap.values())
+        {
+            channel.close();
+        }
     }
 
-    /**
-     * Attempt to send a packet through the downstream pipeline to a remote service.
-     * 
-     * @param packet
-     *            - a source {@link AbstractPacket} packet to send.
-     * @throws BridgeException
-     *             - throws {@link BridgeException} on send failure.
-     */
-    public final void sendPacket(AbstractPacket packet) throws BridgeException
+    @Override
+    public final void sendPacket(AbstractPacket packet, String senderIdentifier) throws BridgeException
     {
-        if (channelConnected.get())
+        Channel ch = null;
+        ch = clientChannelMap.get(senderIdentifier);
+        if (ch != null)
         {
-            channel.writeAndFlush(packet).addListener(new ChannelFutureListener() {
+            ch.write(packet).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws BridgeException
                 {
@@ -90,11 +90,12 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
                 }
             });
         }
+        else
+        {
+            throw new BridgeException(ERROR_MSG_SEND);
+        }
     }
 
-    /**
-     * {@inheritDoc}. Receive a response and forward it upstream.
-     */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
     {
@@ -102,16 +103,21 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     }
 
     @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception
+    {
+        ctx.channel().flush();
+    }
+
+    @Override
     public final void channelActive(ChannelHandlerContext ctx) throws Exception
     {
-        channel = ctx.channel();
-        channelConnected.set(true);
+        clientChannelMap.put(ctx.channel().id().asLongText(), ctx.channel());
     }
 
     @Override
     public final void channelInactive(ChannelHandlerContext ctx) throws Exception
     {
-        channelConnected.set(false);
+        clientChannelMap.remove(ctx.channel().id().asLongText());
     }
 
     @Override
@@ -119,15 +125,15 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     {
         if (proxyName.compareTo(getName()) == 0)
         {
-            channelConnected.set(false);
+            channelBound.set(false);
         }
-
         responseListener.notifyChannelDown(proxyName);
     }
 
     @Override
     public final void notifyChannelUp(String proxyName, InetSocketAddress address)
     {
+        channelBound.set(true);
         responseListener.notifyChannelUp(proxyName, address);
     }
 

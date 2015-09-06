@@ -128,9 +128,9 @@ public abstract class AbstractNettyBridgeAdapter extends ChannelInboundHandlerAd
      */
     public abstract Set<IChannelObserver> getChannelObserverSet();
 
-    @Override
-    public final String toString()
-    {
-        return getName();
-    }
+    // @Override
+    // public final String toString()
+    // {
+    // return getName();
+    // }
 }

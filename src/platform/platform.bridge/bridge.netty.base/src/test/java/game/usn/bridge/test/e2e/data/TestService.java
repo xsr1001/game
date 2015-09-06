@@ -1,118 +1,123 @@
-///**
-// * @file TestService.java
-// * @brief Simple test service.
-// */
-//
-//package game.usn.bridge.test.e2e.data;
-//
-//import io.netty.channel.Channel;
-//import io.netty.channel.ChannelFuture;
-//import io.netty.channel.ChannelFutureListener;
-//import io.netty.channel.ChannelHandlerContext;
-//
-//import java.net.InetSocketAddress;
-//
-//import platform.bridge.api.listener.IChannelObserver;
-//import platform.bridge.base.proxy.AbstractNettyBridgeAdapter;
-//
-///**
-// * Simple test service.
-// * 
-// * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
-// *
-// */
-//public class TestService extends AbstractNettyBridgeAdapter implements IChannelObserver
-//{
-//    // Testing channel up.
-//    public volatile boolean channelUp;
-//    public volatile int observableCallbackCnt;
-//    public volatile int servicePort;
-//
-//    // Testing client connection.
-//    public Channel client;
-//    public volatile boolean clientConnected;
-//    public volatile int observableClientCallbackCnt;
-//
-//    public volatile boolean received;
-//    public volatile boolean sent;
-//    public volatile int sendCallbackCnt;
-//
-//    /**
-//     * Ctor.
-//     */
-//    public TestService()
-//    {
-//        super(new TestServiceProtocol());
-//
-//        this.channelUp = false;
-//        this.observableCallbackCnt = 0;
-//        this.servicePort = -1;
-//
-//        this.clientConnected = false;
-//        this.observableClientCallbackCnt = 0;
-//
-//        this.received = false;
-//        this.sent = false;
-//        this.sendCallbackCnt = 0;
-//    }
-//
-//    @Override
-//    public void notifyChannelUp(String proxyName, InetSocketAddress address)
-//    {
-//        this.channelUp = true;
-//        this.observableCallbackCnt++;
-//        this.servicePort = address.getPort();
-//    }
-//
-//    @Override
-//    public void notifyChannelDown(String proxyName)
-//    {
-//        this.channelUp = true;
-//        this.observableCallbackCnt++;
-//
-//    }
-//
-//    @Override
-//    public void channelActive(ChannelHandlerContext ctx) throws Exception
-//    {
-//        this.client = ctx.channel();
-//        this.clientConnected = true;
-//        this.observableClientCallbackCnt++;
-//    }
-//
-//    @Override
-//    public void channelInactive(ChannelHandlerContext ctx) throws Exception
-//    {
-//        this.client = ctx.channel();
-//        this.clientConnected = false;
-//        this.observableClientCallbackCnt++;
-//    }
-//
-//    @Override
-//    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-//    {
-//        if (msg instanceof PingPacket)
-//        {
-//            this.received = true;
-//            ctx.channel().writeAndFlush(new PongPacket()).addListener(new ChannelFutureListener() {
-//
-//                @Override
-//                public void operationComplete(ChannelFuture future) throws Exception
-//                {
-//                    sendCallbackCnt++;
-//                    sent = future.isSuccess();
-//                }
-//            });
-//        }
-//        else
-//        {
-//            throw new RuntimeException();
-//        }
-//    }
-//
-//    @Override
-//    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-//    {
-//        throw new RuntimeException();
-//    }
-// }
+/**
+ * @file TestService.java
+ * @brief Simple test service.
+ */
+
+package game.usn.bridge.test.e2e.data;
+
+import game.usn.bridge.test.e2e.BridgeE2ETest;
+
+import java.net.InetSocketAddress;
+import java.util.Set;
+
+import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.protocol.AbstractPacket;
+import platform.bridge.api.protocol.AbstractPlatformProtocol;
+import platform.bridge.api.proxy.BridgeOptions;
+import platform.bridge.api.proxy.IResponseListener;
+import platform.bridge.api.proxy.IServiceProxyBase;
+import platform.bridge.base.proxy.service.NettyServiceProxy;
+import platform.core.api.exception.BridgeException;
+
+/**
+ * Simple test service.
+ * 
+ * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
+ *
+ */
+public class TestService implements IResponseListener
+{
+    // Base service proxy.
+    IServiceProxyBase serviceProxyBase = null;
+
+    // Testing channel bound.
+    public boolean bound = false;
+    public int observableCallbackCnt = 0;
+    public int servicePort = -1;
+
+    // Testing ping pong.
+    public boolean received = false;
+    public boolean sent = false;
+    public int sendCallbackCnt = 0;
+
+    // Bridge options
+    private BridgeOptions bridgeOptions;
+
+    // Callbacks.
+    private BridgeE2ETest testCallbackClass;
+
+    /**
+     * Ctor.
+     */
+    public TestService(BridgeOptions serverOptions, BridgeE2ETest testCallbackClass) throws BridgeException
+    {
+        bridgeOptions = serverOptions;
+        serviceProxyBase = new NettyServiceProxy();
+
+        this.testCallbackClass = testCallbackClass;
+    }
+
+    public void init(int port) throws BridgeException
+    {
+        serviceProxyBase.initialize(port, this);
+    }
+
+    @Override
+    public void notifyChannelUp(String proxyName, InetSocketAddress address)
+    {
+        bound = true;
+        observableCallbackCnt++;
+        servicePort = address.getPort();
+        testCallbackClass.serverBind();
+    }
+
+    @Override
+    public void notifyChannelDown(String proxyName)
+    {
+        bound = false;
+        observableCallbackCnt++;
+        testCallbackClass.serverUnbind();
+
+    }
+
+    @Override
+    public void receive(AbstractPacket abstractPacket, String senderIdentifier)
+    {
+        if (abstractPacket instanceof PingPacket)
+        {
+            received = true;
+            try
+            {
+                serviceProxyBase.sendPacket(new PongPacket(), senderIdentifier);
+                sendCallbackCnt++;
+                sent = true;
+            }
+            catch (Exception e)
+            {}
+        }
+    }
+
+    @Override
+    public BridgeOptions getBridgeOptions()
+    {
+        return bridgeOptions;
+    }
+
+    @Override
+    public String getName()
+    {
+        return getClass().getName();
+    }
+
+    @Override
+    public AbstractPlatformProtocol getProtocol()
+    {
+        return new TestServiceProtocol();
+    }
+
+    @Override
+    public Set<IChannelObserver> getChannelObserverSet()
+    {
+        return null;
+    }
+}
