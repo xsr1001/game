@@ -43,12 +43,12 @@ public class TestClient implements IResponseListener
     public boolean response;
 
     // Callbacks.
-    private BridgeE2ETest testCallbackClass;
+    private BridgeE2ETest callback;
 
     /**
      * Ctor.
      */
-    public TestClient(int port, String address, BridgeOptions clientOptions, BridgeE2ETest testCallbackClass)
+    public TestClient(int port, String address, BridgeOptions clientOptions, BridgeE2ETest callback)
         throws BridgeException
     {
         bridgeOptions = clientOptions;
@@ -56,7 +56,7 @@ public class TestClient implements IResponseListener
         clientProxyBase = new NettyClientProxy();
         clientProxyBase.initialize(address, port, this);
 
-        this.testCallbackClass = testCallbackClass;
+        this.callback = callback;
     }
 
     @Override
@@ -64,12 +64,17 @@ public class TestClient implements IResponseListener
     {
         connected = true;
         observableCallbackCnt++;
-        testCallbackClass.clientConnect();
+        callback.clientConnect();
+    }
+
+    public void send() throws BridgeException
+    {
         try
         {
             clientProxyBase.sendPacket(new PingPacket());
             sendCallbackCnt++;
             sent = true;
+            callback.clientSend();
         }
         catch (Exception e)
         {}
@@ -80,7 +85,7 @@ public class TestClient implements IResponseListener
     {
         connected = false;
         observableCallbackCnt++;
-        testCallbackClass.clientDisconnect();
+        callback.clientDisconnect();
     }
 
     @Override
@@ -89,6 +94,7 @@ public class TestClient implements IResponseListener
         if (abstractPacket instanceof PongPacket)
         {
             this.response = true;
+            callback.clientReceive();
         }
     }
 

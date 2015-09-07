@@ -123,8 +123,8 @@ public final class PlatformBridgeManager extends AbstractBridgeProvider implemen
             throw new BridgeException(String.format(ERROR_PROXY_REGISTERED, PROXY_REGISTER1, serviceProxy));
         }
 
-        LOG.info(MSG_NEW_PROXY, PROXY_REGISTER1, serviceProxy.getName(),
-            ARG_LOCALHOST.concat(":").concat(Integer.toString(servicePort)));
+        LOG.info(String.format(MSG_NEW_PROXY, PROXY_REGISTER1, serviceProxy.getName(),
+            ARG_LOCALHOST.concat(":").concat(Integer.toString(servicePort))));
 
         // Add self to observer set to receive actual service channel life-cycle status.
         channelObserverSet.add(this);

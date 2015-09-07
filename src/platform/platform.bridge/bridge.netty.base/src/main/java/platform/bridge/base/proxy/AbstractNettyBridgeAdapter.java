@@ -104,7 +104,7 @@ public abstract class AbstractNettyBridgeAdapter extends ChannelInboundHandlerAd
      * 
      * @return - a {@link BridgeOptions} object, defining basic options to initialize network channel with.
      */
-    protected abstract BridgeOptions getBridgeOptions();
+    public abstract BridgeOptions getBridgeOptions();
 
     /**
      * Retrieve proxy implementation specific name.
@@ -128,9 +128,9 @@ public abstract class AbstractNettyBridgeAdapter extends ChannelInboundHandlerAd
      */
     public abstract Set<IChannelObserver> getChannelObserverSet();
 
-    // @Override
-    // public final String toString()
-    // {
-    // return getName();
-    // }
+    @Override
+    public final String toString()
+    {
+        return getName();
+    }
 }

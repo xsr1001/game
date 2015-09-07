@@ -43,6 +43,10 @@ public class BridgeE2ETest
     private CountDownLatch disconnectCDLatch;
     private CountDownLatch bindCDLatch;
     private CountDownLatch unbindCDLatch;
+    private CountDownLatch clientSend;
+    private CountDownLatch clientReceive;
+    private CountDownLatch serverSend;
+    private CountDownLatch serverReceive;
 
     /**
      * Initialize stuff before test.
@@ -73,6 +77,10 @@ public class BridgeE2ETest
         disconnectCDLatch = new CountDownLatch(1);
         bindCDLatch = new CountDownLatch(1);
         unbindCDLatch = new CountDownLatch(1);
+        clientSend = new CountDownLatch(1);
+        clientReceive = new CountDownLatch(1);
+        serverSend = new CountDownLatch(1);
+        serverReceive = new CountDownLatch(1);
     }
 
     /**
@@ -85,8 +93,7 @@ public class BridgeE2ETest
         TestService testService = null;
         try
         {
-            testService = new TestService(serverOptions, this);
-            testService.init(0);
+            testService = new TestService(serverOptions, 0, this);
             Assert.assertTrue(bindCDLatch.await(2, TimeUnit.SECONDS));
             Assert.assertTrue(testService.observableCallbackCnt == 1);
             Assert.assertTrue(testService.bound);
@@ -114,38 +121,31 @@ public class BridgeE2ETest
         }
         Assert.assertNull(ex);
 
-        // try
-        // {
-        // // Client send.
-        // System.out.println("Sleeping for client send.");
-        // Thread.sleep(1500);
-        // Assert.assertTrue(this.testClient.sendCallbackCnt != 0);
-        // Assert.assertTrue(this.testClient.sent);
-        //
-        // // Server receive.
-        // System.out.println("Sleeping for server receive.");
-        // Thread.sleep(1500);
-        // Assert.assertTrue(this.testservice.received != false);
-        // Assert.assertTrue(this.testservice.received);
-        //
-        // // Server send.
-        // System.out.println("Sleeping for server send.");
-        // Thread.sleep(1500);
-        // Assert.assertTrue(this.testservice.sendCallbackCnt != 0);
-        // Assert.assertTrue(this.testservice.sent);
-        //
-        // // Client receive.
-        // System.out.println("Sleeping for client receive.");
-        // Thread.sleep(1500);
-        // Assert.assertTrue(this.testClient.response != false);
-        // Assert.assertTrue(this.testClient.response);
-        // }
-        // catch (Exception e)
-        // {
-        // System.err.println(e);
-        // ex = e;
-        // }
-        // Assert.assertNull(ex);
+        try
+        {
+            testClient.send();
+            Assert.assertTrue(clientSend.await(2, TimeUnit.SECONDS));
+            Assert.assertTrue(testClient.sendCallbackCnt != 0);
+            Assert.assertTrue(testClient.sent);
+
+            Assert.assertTrue(serverReceive.await(2, TimeUnit.SECONDS));
+            Assert.assertTrue(testService.received != false);
+            Assert.assertTrue(testService.received);
+
+            Assert.assertTrue(serverSend.await(2, TimeUnit.SECONDS));
+            Assert.assertTrue(testService.sendCallbackCnt != 0);
+            Assert.assertTrue(testService.sent);
+
+            Assert.assertTrue(clientReceive.await(2, TimeUnit.SECONDS));
+            Assert.assertTrue(testClient.response != false);
+            Assert.assertTrue(testClient.response);
+        }
+        catch (Exception e)
+        {
+            System.err.println(e);
+            ex = e;
+        }
+        Assert.assertNull(ex);
     }
 
     public void clientConnect()
@@ -166,5 +166,25 @@ public class BridgeE2ETest
     public void serverUnbind()
     {
         unbindCDLatch.countDown();
+    }
+
+    public void clientSend()
+    {
+        clientSend.countDown();
+    }
+
+    public void clientReceive()
+    {
+        clientReceive.countDown();
+    }
+
+    public void serverSend()
+    {
+        serverSend.countDown();
+    }
+
+    public void serverReceive()
+    {
+        serverReceive.countDown();
     }
 }

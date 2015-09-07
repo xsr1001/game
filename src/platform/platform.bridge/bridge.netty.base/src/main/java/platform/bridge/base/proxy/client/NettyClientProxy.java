@@ -56,8 +56,8 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     public void initialize(String serviceIPv4Address, Integer servicePort, IResponseListener responseListener)
         throws BridgeException
     {
-        super.initialize(serviceIPv4Address, servicePort);
         this.responseListener = responseListener;
+        super.initialize(serviceIPv4Address, servicePort);
     }
 
     @Override

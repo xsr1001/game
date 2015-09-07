@@ -43,23 +43,17 @@ public class TestService implements IResponseListener
     // Bridge options
     private BridgeOptions bridgeOptions;
 
-    // Callbacks.
-    private BridgeE2ETest testCallbackClass;
+    private BridgeE2ETest callback;
 
     /**
      * Ctor.
      */
-    public TestService(BridgeOptions serverOptions, BridgeE2ETest testCallbackClass) throws BridgeException
+    public TestService(BridgeOptions serverOptions, int port, BridgeE2ETest callback) throws BridgeException
     {
         bridgeOptions = serverOptions;
         serviceProxyBase = new NettyServiceProxy();
-
-        this.testCallbackClass = testCallbackClass;
-    }
-
-    public void init(int port) throws BridgeException
-    {
         serviceProxyBase.initialize(port, this);
+        this.callback = callback;
     }
 
     @Override
@@ -68,7 +62,7 @@ public class TestService implements IResponseListener
         bound = true;
         observableCallbackCnt++;
         servicePort = address.getPort();
-        testCallbackClass.serverBind();
+        callback.serverBind();
     }
 
     @Override
@@ -76,7 +70,7 @@ public class TestService implements IResponseListener
     {
         bound = false;
         observableCallbackCnt++;
-        testCallbackClass.serverUnbind();
+        callback.serverUnbind();
 
     }
 
@@ -86,11 +80,13 @@ public class TestService implements IResponseListener
         if (abstractPacket instanceof PingPacket)
         {
             received = true;
+            callback.serverReceive();
             try
             {
                 serviceProxyBase.sendPacket(new PongPacket(), senderIdentifier);
                 sendCallbackCnt++;
                 sent = true;
+                callback.serverSend();
             }
             catch (Exception e)
             {}

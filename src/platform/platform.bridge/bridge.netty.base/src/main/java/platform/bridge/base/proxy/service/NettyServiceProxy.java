@@ -58,8 +58,9 @@ public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implemen
     @Override
     public void initialize(Integer servicePort, IResponseListener responseListener) throws BridgeException
     {
-        super.initialize(null, servicePort);
         this.responseListener = responseListener;
+
+        super.initialize(null, servicePort);
     }
 
     @Override
