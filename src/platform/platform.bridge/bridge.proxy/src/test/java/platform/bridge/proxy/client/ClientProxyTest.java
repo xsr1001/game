@@ -15,7 +15,7 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.observer.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.api.proxy.IClientProxyBase;

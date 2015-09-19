@@ -67,8 +67,7 @@ public final class PlatformPacketDecoder extends MessageToMessageDecoder<ByteBuf
             // Check if packet has not consumed all the bytes in bytebuf.
             if (in.readableBytes() != 0)
             {
-                LOG.error(String.format(ERROR_PACKET_READ, packet.getClass().getName(), messageId,
- consumerProtocol));
+                LOG.error(String.format(ERROR_PACKET_READ, packet.getClass().getName(), messageId, consumerProtocol));
                 throw new ProtocolException(String.format(ERROR_PACKET_READ, packet.getClass().getName(), messageId,
                     consumerProtocol));
             }

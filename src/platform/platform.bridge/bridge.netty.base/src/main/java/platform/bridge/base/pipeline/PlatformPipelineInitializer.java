@@ -19,9 +19,9 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import platform.bridge.api.listener.IChannelObserver;
-import platform.bridge.api.listener.IConnectionObserver;
-import platform.bridge.api.listener.IConnectionObserver.EConnectionState;
+import platform.bridge.api.observer.IChannelObserver;
+import platform.bridge.api.observer.IConnectionObserver;
+import platform.bridge.api.observer.IConnectionObserver.EConnectionState;
 import platform.bridge.api.proxy.BridgeOptions;
 import platform.bridge.base.pipeline.decoder.PlatformPacketDecoder;
 import platform.bridge.base.pipeline.encoder.PlatformPacketEncoder;

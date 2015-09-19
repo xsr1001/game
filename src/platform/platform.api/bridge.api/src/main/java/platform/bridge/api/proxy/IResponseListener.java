@@ -8,7 +8,7 @@ package platform.bridge.api.proxy;
 import java.util.List;
 import java.util.Set;
 
-import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.observer.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 
@@ -19,7 +19,7 @@ import platform.bridge.api.protocol.AbstractPlatformProtocol;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public interface IResponseListener extends IChannelObserver
+public interface IResponseListener
 {
     /**
      * Receive a packet from network proxy base.
@@ -56,7 +56,7 @@ public interface IResponseListener extends IChannelObserver
      * Retrieve proxy specific channel observer set.
      * 
      * @return - a {@link List} of {@link IChannelObserver} objects, representing observers to network channel
-     *         life-cycle events.
+     *         life-cycle change events.
      */
     Set<IChannelObserver> getChannelObserverSet();
 }

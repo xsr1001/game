@@ -20,7 +20,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.observer.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.BridgeOptions;

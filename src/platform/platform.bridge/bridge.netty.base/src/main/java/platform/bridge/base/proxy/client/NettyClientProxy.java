@@ -11,10 +11,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.net.InetSocketAddress;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.BridgeOptions;
@@ -32,16 +30,13 @@ import platform.core.api.exception.BridgeException;
 public final class NettyClientProxy extends AbstractNettyBridgeAdapter implements IClientProxyBase
 {
     // Errors, args, messages.
-    private static final String ERROR_MSG_SEND = "Cannot send a message to remote service as channel is not connected.";
+    private static final String ERROR_MSG_SEND = "Cannot send a message to remote service as channel is not active.";
 
     // A flag determining if channel is active (socket has connected).
     private AtomicBoolean channelConnected;
 
     // Client channel.
     private Channel channel;
-
-    // Response listener for receiving service responses.
-    private IResponseListener responseListener;
 
     /**
      * Constructor.
@@ -90,11 +85,12 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
                 }
             });
         }
+        else
+        {
+            throw new BridgeException(ERROR_MSG_SEND);
+        }
     }
 
-    /**
-     * {@inheritDoc}. Receive a response and forward it upstream.
-     */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
     {
@@ -106,29 +102,17 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     {
         channel = ctx.channel();
         channelConnected.set(true);
+
+        notifyChannelLifecycleEvent(responseListener.getChannelObserverSet(), Boolean.TRUE,
+            (InetSocketAddress) ctx.channel().remoteAddress());
     }
 
     @Override
     public final void channelInactive(ChannelHandlerContext ctx) throws Exception
     {
         channelConnected.set(false);
-    }
-
-    @Override
-    public final void notifyChannelDown(String proxyName)
-    {
-        if (proxyName.compareTo(getName()) == 0)
-        {
-            channelConnected.set(false);
-        }
-
-        responseListener.notifyChannelDown(proxyName);
-    }
-
-    @Override
-    public final void notifyChannelUp(String proxyName, InetSocketAddress address)
-    {
-        responseListener.notifyChannelUp(proxyName, address);
+        notifyChannelLifecycleEvent(responseListener.getChannelObserverSet(), Boolean.FALSE,
+            (InetSocketAddress) ctx.channel().remoteAddress());
     }
 
     @Override
@@ -147,11 +131,5 @@ public final class NettyClientProxy extends AbstractNettyBridgeAdapter implement
     public AbstractPlatformProtocol getProtocol()
     {
         return responseListener.getProtocol();
-    }
-
-    @Override
-    public Set<IChannelObserver> getChannelObserverSet()
-    {
-        return responseListener.getChannelObserverSet();
     }
 }

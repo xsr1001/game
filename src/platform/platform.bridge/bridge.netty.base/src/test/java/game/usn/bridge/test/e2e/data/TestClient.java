@@ -10,7 +10,7 @@ import game.usn.bridge.test.e2e.BridgeE2ETest;
 import java.net.InetSocketAddress;
 import java.util.Set;
 
-import platform.bridge.api.listener.IChannelObserver;
+import platform.bridge.api.observer.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.BridgeOptions;

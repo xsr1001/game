@@ -104,7 +104,7 @@ public class BridgeOptions
 
         for (Map.Entry<String, BridgeOption> entry : optionsMap.entrySet())
         {
-            sb.append(entry.getKey()).append("-->").append(entry.getValue()).append(System.lineSeparator());
+            sb.append(entry.getKey()).append("-->").append(entry.getValue().get()).append(System.lineSeparator());
         }
 
         return sb.toString();

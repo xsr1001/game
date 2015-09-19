@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import platform.bridge.api.listener.IConnectionObserver;
+import platform.bridge.api.observer.IConnectionObserver;
 import platform.bridge.api.proxy.BridgeOptions;
 
 /**

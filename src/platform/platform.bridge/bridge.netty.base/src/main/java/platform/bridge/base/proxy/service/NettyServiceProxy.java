@@ -10,13 +10,12 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
+import java.net.Inet4Address;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import platform.bridge.api.listener.IChannelObserver;
 import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 import platform.bridge.api.proxy.BridgeOptions;
@@ -34,16 +33,14 @@ import platform.core.api.exception.BridgeException;
 public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implements IServiceProxyBase
 {
     // Errors, args, messages.
-    private static final String ERROR_MSG_SEND = "Cannot send response to client as channel is not connected.";
-
-    // A flag determining if channel is active (server socket channel has been bound).
-    private AtomicBoolean channelBound;
+    private static final String ERROR_MSG_SEND = "Cannot send response to client as channel is not active.";
+    private static final String ERROR_UNKNOWN_HOST = "Unknown local host while retrieving local host address.";
 
     // Client channel map.
     private Map<String, Channel> clientChannelMap;
 
-    // Response listener for receiving service responses.
-    private IResponseListener responseListener;
+    // Actual service port this service is listening on.
+    private Integer activeServicePort;
 
     /**
      * Constructor.
@@ -52,15 +49,24 @@ public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implemen
     {
         super();
         clientChannelMap = new HashMap<String, Channel>();
-        channelBound = new AtomicBoolean();
     }
 
     @Override
     public void initialize(Integer servicePort, IResponseListener responseListener) throws BridgeException
     {
         this.responseListener = responseListener;
+        activeServicePort = super.initialize(null, servicePort);
 
-        super.initialize(null, servicePort);
+        try
+        {
+            notifyChannelLifecycleEvent(responseListener.getChannelObserverSet(), Boolean.TRUE, new InetSocketAddress(
+                Inet4Address.getLocalHost(), activeServicePort));
+        }
+        catch (UnknownHostException uke)
+        {
+            LOG.error(ERROR_UNKNOWN_HOST, uke);
+            throw new BridgeException(ERROR_UNKNOWN_HOST, uke);
+        }
     }
 
     @Override
@@ -70,6 +76,17 @@ public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implemen
         for (Channel channel : clientChannelMap.values())
         {
             channel.close();
+        }
+
+        try
+        {
+            notifyChannelLifecycleEvent(responseListener.getChannelObserverSet(), Boolean.FALSE, new InetSocketAddress(
+                Inet4Address.getLocalHost(), activeServicePort));
+        }
+        catch (UnknownHostException uke)
+        {
+            LOG.error(ERROR_UNKNOWN_HOST, uke);
+            throw new BridgeException(ERROR_UNKNOWN_HOST, uke);
         }
     }
 
@@ -122,23 +139,6 @@ public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implemen
     }
 
     @Override
-    public final void notifyChannelDown(String proxyName)
-    {
-        if (proxyName.compareTo(getName()) == 0)
-        {
-            channelBound.set(false);
-        }
-        responseListener.notifyChannelDown(proxyName);
-    }
-
-    @Override
-    public final void notifyChannelUp(String proxyName, InetSocketAddress address)
-    {
-        channelBound.set(true);
-        responseListener.notifyChannelUp(proxyName, address);
-    }
-
-    @Override
     public BridgeOptions getBridgeOptions()
     {
         return responseListener.getBridgeOptions();
@@ -154,11 +154,5 @@ public final class NettyServiceProxy extends AbstractNettyBridgeAdapter implemen
     public AbstractPlatformProtocol getProtocol()
     {
         return responseListener.getProtocol();
-    }
-
-    @Override
-    public Set<IChannelObserver> getChannelObserverSet()
-    {
-        return responseListener.getChannelObserverSet();
     }
 }
