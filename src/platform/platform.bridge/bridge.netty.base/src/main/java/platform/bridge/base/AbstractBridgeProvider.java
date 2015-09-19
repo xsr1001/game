@@ -127,7 +127,7 @@ public abstract class AbstractBridgeProvider
         try
         {
             InetSocketAddress serviceAddress = new InetSocketAddress(Inet4Address.getLocalHost(), servicePort);
-            ServerBootstrap serverBootstrap = createBaseServiceUSNStack(serviceAddress, this.workerGroup,
+            ServerBootstrap serverBootstrap = createBaseServicePlatformStack(serviceAddress, this.workerGroup,
                 pipelineInitializer);
 
             // Add channel options.
@@ -200,7 +200,7 @@ public abstract class AbstractBridgeProvider
 
         try
         {
-            Bootstrap clientBootstrap = createBaseClientUSNStack(remoteAddress, workerGroup, pipelineInitializer);
+            Bootstrap clientBootstrap = createBaseClientPlatformStack(remoteAddress, workerGroup, pipelineInitializer);
 
             // Add bridge options.
             clientBootstrap.attr(PlatformPipelineInitializer.BRIDGE_OPTIONS_ATR_KEY, bridgeOptions);
@@ -256,7 +256,7 @@ public abstract class AbstractBridgeProvider
      * 
      * @return - a ready to bind {@link ServerBootstrap}.
      */
-    private ServerBootstrap createBaseServiceUSNStack(SocketAddress address, EventLoopGroup workerGroup,
+    private ServerBootstrap createBaseServicePlatformStack(SocketAddress address, EventLoopGroup workerGroup,
         final PlatformPipelineInitializer pipelineInitializer)
     {
         ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -282,7 +282,7 @@ public abstract class AbstractBridgeProvider
      * 
      * @return - a ready to connect {@link Bootstrap}.
      */
-    private Bootstrap createBaseClientUSNStack(SocketAddress address, EventLoopGroup workerGroup,
+    private Bootstrap createBaseClientPlatformStack(SocketAddress address, EventLoopGroup workerGroup,
         final PlatformPipelineInitializer pipelineInitializer)
     {
         Bootstrap bootstrap = new Bootstrap();

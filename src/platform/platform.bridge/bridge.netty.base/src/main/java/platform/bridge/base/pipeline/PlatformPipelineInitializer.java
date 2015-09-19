@@ -19,7 +19,6 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import platform.bridge.api.observer.IChannelObserver;
 import platform.bridge.api.observer.IConnectionObserver;
 import platform.bridge.api.observer.IConnectionObserver.EConnectionState;
 import platform.bridge.api.proxy.BridgeOptions;
@@ -51,9 +50,7 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
     private static final String ERROR_NO_CHANNEL_OPTIONS = "Cannot retrieve channel options attribute from channel.";
 
     // Channel attribute keys.
-    private static final String CHANNEL_OBSERVER_KEY = "channelObserverKey";
     private static final String BRIDGE_OPTIONS_KEY = "bridgeOptionsKey";
-    public static final AttributeKey<Set<IChannelObserver>> CHANNEL_OBSERVER_ATR_KEY = AttributeKey.newInstance(CHANNEL_OBSERVER_KEY);
     public static final AttributeKey<BridgeOptions> BRIDGE_OPTIONS_ATR_KEY = AttributeKey.newInstance(BRIDGE_OPTIONS_KEY);
 
     // Handler names.
@@ -119,7 +116,7 @@ public final class PlatformPipelineInitializer extends ChannelInitializer<Channe
             for (IConnectionObserver listener : (Set<IConnectionObserver>) options.get(
                 BridgeOptions.KEY_CONNECTION_LISTENER_SET).get())
             {
-                listener.notifyConnectionState(ch.toString(), EConnectionState.TRANSPORT_UP);
+                listener.notifyConnectionState(ch.id().asLongText(), EConnectionState.ONLINE);
             }
         }
 
