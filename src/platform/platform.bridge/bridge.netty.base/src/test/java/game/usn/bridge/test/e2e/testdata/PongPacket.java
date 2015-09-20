@@ -3,7 +3,7 @@
  * @brief <description>
  */
 
-package game.usn.bridge.test.e2e.data;
+package game.usn.bridge.test.e2e.testdata;
 
 import platform.bridge.api.protocol.AbstractPacket;
 import io.netty.buffer.ByteBuf;

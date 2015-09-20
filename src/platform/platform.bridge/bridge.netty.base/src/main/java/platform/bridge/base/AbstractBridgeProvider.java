@@ -214,7 +214,7 @@ public abstract class AbstractBridgeProvider
             ChannelFuture clientConnectFuture = clientBootstrap.connect();
             if (clientConnectFuture.await(DEFAULT_CHANNEL_WAIT_TIME_SEC, TimeUnit.SECONDS))
             {
-                LOG.info(String.format(MSG_CLIENT_CONNECTED, clientConnectFuture.channel().remoteAddress()));
+                LOG.info(String.format(MSG_CLIENT_CONNECTED, clientConnectFuture.channel().remoteAddress().toString()));
                 bridgeChannelSet.add(clientConnectFuture.channel());
             }
             else

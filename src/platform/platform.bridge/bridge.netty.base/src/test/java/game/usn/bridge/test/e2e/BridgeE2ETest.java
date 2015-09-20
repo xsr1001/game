@@ -5,11 +5,13 @@
 
 package game.usn.bridge.test.e2e;
 
-import game.usn.bridge.test.e2e.data.TestClient;
-import game.usn.bridge.test.e2e.data.TestService;
+import game.usn.bridge.test.e2e.testdata.ITestTransportObserver;
+import game.usn.bridge.test.e2e.testdata.TestClient;
+import game.usn.bridge.test.e2e.testdata.TestService;
 
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -21,7 +23,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import platform.bridge.api.observer.IChannelObserver;
 import platform.bridge.api.observer.IConnectionObserver;
+import platform.bridge.api.protocol.AbstractPacket;
 import platform.bridge.api.proxy.BridgeOptions;
 
 /**
@@ -30,7 +34,7 @@ import platform.bridge.api.proxy.BridgeOptions;
  * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
  *
  */
-public class BridgeE2ETest
+public class BridgeE2ETest implements ITestTransportObserver, IChannelObserver
 {
     // Exception.
     private Exception ex;
@@ -47,6 +51,19 @@ public class BridgeE2ETest
     private CountDownLatch clientReceive;
     private CountDownLatch serverSend;
     private CountDownLatch serverReceive;
+
+    // Test service and client.
+    private TestService testService1;
+    private TestClient testClient1;
+
+    // Testing service channel bound.
+    private boolean bound = false;
+    private int observableCallbackCnt = 0;
+    private int servicePort = -1;
+
+    // Testing client channel bound.
+    private int clientObservableCallbackCnt = 0;
+    private boolean connected;
 
     /**
      * Initialize stuff before test.
@@ -73,6 +90,9 @@ public class BridgeE2ETest
     {
         ex = null;
 
+        testService1 = null;
+        testClient1 = null;
+
         connectCDLatch = new CountDownLatch(1);
         disconnectCDLatch = new CountDownLatch(1);
         bindCDLatch = new CountDownLatch(1);
@@ -90,13 +110,15 @@ public class BridgeE2ETest
     public void testE2E()
     {
         // Initialize service proxy.
-        TestService testService = null;
         try
         {
-            testService = new TestService(serverOptions, 0, this);
+            testService1 = new TestService(serverOptions, this, new HashSet<IChannelObserver>(
+                Arrays.asList(new IChannelObserver[] { this })));
+            testService1.initialize(0);
+
             Assert.assertTrue(bindCDLatch.await(2, TimeUnit.SECONDS));
-            Assert.assertTrue(testService.observableCallbackCnt == 1);
-            Assert.assertTrue(testService.bound);
+            Assert.assertTrue(observableCallbackCnt == 1);
+            Assert.assertTrue(bound);
         }
         catch (Exception e)
         {
@@ -105,15 +127,16 @@ public class BridgeE2ETest
         Assert.assertNull(ex);
 
         // Initialize client proxy.
-        TestClient testClient = null;
         try
         {
             InetSocketAddress address = new InetSocketAddress(Inet4Address.getLocalHost(), 0);
 
-            testClient = new TestClient(testService.servicePort, address.getHostName(), clientOptions, this);
+            testClient1 = new TestClient(clientOptions, this, new HashSet<IChannelObserver>(
+                Arrays.asList(new IChannelObserver[] { this })));
+            testClient1.initialize(servicePort, address.getHostName());
             Assert.assertTrue(connectCDLatch.await(2, TimeUnit.SECONDS));
-            Assert.assertTrue(testClient.observableCallbackCnt == 1);
-            Assert.assertTrue(testClient.connected);
+            Assert.assertTrue(clientObservableCallbackCnt == 1);
+            Assert.assertTrue(connected);
         }
         catch (Exception e)
         {
@@ -123,22 +146,22 @@ public class BridgeE2ETest
 
         try
         {
-            testClient.send();
+            testClient1.send();
             Assert.assertTrue(clientSend.await(2, TimeUnit.SECONDS));
-            Assert.assertTrue(testClient.sendCallbackCnt != 0);
-            Assert.assertTrue(testClient.sent);
+            Assert.assertTrue(testClient1.sendCallbackCnt != 0);
+            Assert.assertTrue(testClient1.sent);
 
             Assert.assertTrue(serverReceive.await(2, TimeUnit.SECONDS));
-            Assert.assertTrue(testService.received != false);
-            Assert.assertTrue(testService.received);
+            Assert.assertTrue(testService1.received != false);
+            Assert.assertTrue(testService1.received);
 
             Assert.assertTrue(serverSend.await(2, TimeUnit.SECONDS));
-            Assert.assertTrue(testService.sendCallbackCnt != 0);
-            Assert.assertTrue(testService.sent);
+            Assert.assertTrue(testService1.sendCallbackCnt != 0);
+            Assert.assertTrue(testService1.sent);
 
             Assert.assertTrue(clientReceive.await(2, TimeUnit.SECONDS));
-            Assert.assertTrue(testClient.response != false);
-            Assert.assertTrue(testClient.response);
+            Assert.assertTrue(testClient1.response != false);
+            Assert.assertTrue(testClient1.response);
         }
         catch (Exception e)
         {
@@ -148,42 +171,62 @@ public class BridgeE2ETest
         Assert.assertNull(ex);
     }
 
-    public void clientConnect()
+    @Override
+    public void notifyChannelStateChanged(boolean isChannelUp, String proxyName, InetSocketAddress inetSocketAddress)
     {
-        connectCDLatch.countDown();
+        if (proxyName.compareTo(testService1.getName()) == 0)
+        {
+            if (isChannelUp)
+            {
+                bound = true;
+                observableCallbackCnt++;
+                bindCDLatch.countDown();
+                servicePort = inetSocketAddress.getPort();
+            }
+            else
+            {
+                bound = false;
+                observableCallbackCnt++;
+                unbindCDLatch.countDown();
+            }
+        }
+        else if (proxyName.compareTo(testClient1.getName()) == 0)
+        {
+            if (isChannelUp)
+            {
+                connected = true;
+                clientObservableCallbackCnt++;
+                connectCDLatch.countDown();
+            }
+            else
+            {
+                connected = false;
+                clientObservableCallbackCnt++;
+                disconnectCDLatch.countDown();
+            }
+        }
     }
 
-    public void clientDisconnect()
-    {
-        disconnectCDLatch.countDown();
-    }
-
-    public void serverBind()
-    {
-        bindCDLatch.countDown();
-    }
-
-    public void serverUnbind()
-    {
-        unbindCDLatch.countDown();
-    }
-
-    public void clientSend()
+    @Override
+    public void clientSent(AbstractPacket abstractPacket)
     {
         clientSend.countDown();
     }
 
-    public void clientReceive()
+    @Override
+    public void clientReceived(AbstractPacket abstractPacket)
     {
         clientReceive.countDown();
     }
 
-    public void serverSend()
+    @Override
+    public void serverSent(AbstractPacket abstractPacket, String senderIdentifier)
     {
         serverSend.countDown();
     }
 
-    public void serverReceive()
+    @Override
+    public void serverReceived(AbstractPacket abstractPacket, String senderIdentifier)
     {
         serverReceive.countDown();
     }

@@ -94,7 +94,8 @@ public class ArgsChecker
         if (number.longValue() < 0)
         {
             LOG.error(String.format(LESS_THAN_0, number, objectDescription, getCallingMethod()));
-            throw new IllegalArgumentException(String.format(LESS_THAN_0, objectDescription, getCallingMethod()));
+            throw new IllegalArgumentException(
+                String.format(LESS_THAN_0, number, objectDescription, getCallingMethod()));
         }
     }
 

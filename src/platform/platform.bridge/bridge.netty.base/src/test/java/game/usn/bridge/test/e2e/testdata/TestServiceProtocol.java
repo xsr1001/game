@@ -3,7 +3,7 @@
  * @brief TestServiceProtocol
  */
 
-package game.usn.bridge.test.e2e.data;
+package game.usn.bridge.test.e2e.testdata;
 
 import platform.bridge.api.protocol.AbstractPlatformProtocol;
 

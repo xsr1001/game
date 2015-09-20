@@ -5,7 +5,7 @@
 
 package game.usn.bridge.test.pipeline;
 
-import game.usn.bridge.test.e2e.data.UnknownPacket;
+import game.usn.bridge.test.e2e.testdata.UnknownPacket;
 import game.usn.bridge.test.pipeline.data.TestPacket;
 import game.usn.bridge.test.pipeline.data.TestServiceProtocol;
 import io.netty.buffer.ByteBuf;

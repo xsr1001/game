@@ -89,7 +89,7 @@ public class ProxyTestBase
      * @author Bostjan Lasnik (bostjan.lasnik@hotmail.com)
      *
      */
-    public static class TestClientProxy extends AbstractPlatformClientProxy
+    public static class TestClientProxy extends AbstractPlatformClientProxy implements IChannelObserver
     {
         public BridgeOptions channelOptions;
         public String name;
@@ -143,15 +143,16 @@ public class ProxyTestBase
         }
 
         @Override
-        public void notifyChannelUp(String proxyName, InetSocketAddress address)
+        public void notifyChannelStateChanged(boolean isChannelUp, String proxyName, InetSocketAddress inetSocketAddress)
         {
-            channelUp = true;
-        }
-
-        @Override
-        public void notifyChannelDown(String proxyName)
-        {
-            channelDown = true;
+            if (isChannelUp)
+            {
+                channelUp = true;
+            }
+            else
+            {
+                channelDown = true;
+            }
         }
     }
 

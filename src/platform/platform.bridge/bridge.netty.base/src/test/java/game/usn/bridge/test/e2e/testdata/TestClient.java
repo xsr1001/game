@@ -3,11 +3,8 @@
  * @brief Simple test client.
  */
 
-package game.usn.bridge.test.e2e.data;
+package game.usn.bridge.test.e2e.testdata;
 
-import game.usn.bridge.test.e2e.BridgeE2ETest;
-
-import java.net.InetSocketAddress;
 import java.util.Set;
 
 import platform.bridge.api.observer.IChannelObserver;
@@ -33,9 +30,8 @@ public class TestClient implements IResponseListener
     // Bridge options
     private BridgeOptions bridgeOptions;
 
-    // Testing channel up (client has connected).
-    public boolean connected = false;
-    public int observableCallbackCnt = 0;
+    // Channel observer set.
+    private Set<IChannelObserver> channelObserverSet;
 
     // Testing client send.
     public boolean sent = false;
@@ -43,49 +39,45 @@ public class TestClient implements IResponseListener
     public boolean response;
 
     // Callbacks.
-    private BridgeE2ETest callback;
+    private ITestTransportObserver testBridgeObserver;
 
     /**
      * Ctor.
      */
-    public TestClient(int port, String address, BridgeOptions clientOptions, BridgeE2ETest callback)
-        throws BridgeException
+    public TestClient(BridgeOptions clientOptions, ITestTransportObserver testBridgeObserver,
+        Set<IChannelObserver> channelObserverSet) throws BridgeException
     {
         bridgeOptions = clientOptions;
+        this.testBridgeObserver = testBridgeObserver;
+        this.channelObserverSet = channelObserverSet;
 
         clientProxyBase = new NettyClientProxy();
-        clientProxyBase.initialize(address, port, this);
-
-        this.callback = callback;
     }
 
-    @Override
-    public void notifyChannelUp(String proxyName, InetSocketAddress address)
+    /**
+     * Initialize test client on given port and host.
+     * 
+     * @param port
+     * @param address
+     * @throws BridgeException
+     */
+    public void initialize(int port, String address) throws BridgeException
     {
-        connected = true;
-        observableCallbackCnt++;
-        callback.clientConnect();
+        clientProxyBase.initialize(address, port, this);
     }
 
     public void send() throws BridgeException
     {
         try
         {
-            clientProxyBase.sendPacket(new PingPacket());
+            PingPacket packet = new PingPacket();
+            clientProxyBase.sendPacket(packet);
             sendCallbackCnt++;
             sent = true;
-            callback.clientSend();
+            testBridgeObserver.clientSent(packet);
         }
         catch (Exception e)
         {}
-    }
-
-    @Override
-    public void notifyChannelDown(String proxyName)
-    {
-        connected = false;
-        observableCallbackCnt++;
-        callback.clientDisconnect();
     }
 
     @Override
@@ -94,7 +86,7 @@ public class TestClient implements IResponseListener
         if (abstractPacket instanceof PongPacket)
         {
             this.response = true;
-            callback.clientReceive();
+            testBridgeObserver.clientReceived(abstractPacket);
         }
     }
 
@@ -119,6 +111,6 @@ public class TestClient implements IResponseListener
     @Override
     public Set<IChannelObserver> getChannelObserverSet()
     {
-        return null;
+        return channelObserverSet;
     }
 }
